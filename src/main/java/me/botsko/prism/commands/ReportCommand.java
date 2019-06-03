@@ -1,5 +1,6 @@
 package me.botsko.prism.commands;
 
+import com.zaxxer.hikari.HikariDataSource;
 import me.botsko.prism.database.ActionReportQuery;
 import me.botsko.prism.database.BlockReportQuery;
 import me.botsko.prism.Prism;
@@ -12,7 +13,6 @@ import me.botsko.prism.commandlibs.CallInfo;
 import me.botsko.prism.commandlibs.PreprocessArgs;
 import me.botsko.prism.commandlibs.SubHandler;
 import me.botsko.prism.utils.MiscUtils;
-import org.apache.tomcat.jdbc.pool.DataSource;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.command.CommandSender;
@@ -146,14 +146,14 @@ public class ReportCommand implements SubHandler {
 				.playerMsg("Active Failure Count: " + ChatColor.WHITE + RecordingManager.failedDbConnectionCount));
 		sender.sendMessage(
 				Prism.messenger.playerMsg("Actions in queue: " + ChatColor.WHITE + RecordingQueue.getQueueSize()));
-		if(Prism.getPrismDataSource().getDataSource() instanceof org.apache.tomcat.jdbc.pool.DataSource) {
-			org.apache.tomcat.jdbc.pool.DataSource pool = (DataSource) Prism.getPrismDataSource().getDataSource();
-			sender.sendMessage(Prism.messenger.playerMsg("Pool active: " + ChatColor.WHITE + pool.getActive()));
-			sender.sendMessage(Prism.messenger.playerMsg("Pool idle: " + ChatColor.WHITE + pool.getIdle()));
+		if(Prism.getPrismDataSource().getDataSource() instanceof HikariDataSource) {
+			HikariDataSource pool = (HikariDataSource) Prism.getPrismDataSource().getDataSource();
+			sender.sendMessage(Prism.messenger.playerMsg("Pool active count: " + ChatColor.WHITE + pool.getHikariPoolMXBean().getActiveConnections()));
+			sender.sendMessage(Prism.messenger.playerMsg("Pool idle count: " + ChatColor.WHITE + pool.getHikariPoolMXBean().getIdleConnections()));
 			sender.sendMessage(
-					Prism.messenger.playerMsg("Pool active count: " + ChatColor.WHITE +pool.getNumActive()));
+					Prism.messenger.playerMsg("Threads waiting count: " + ChatColor.WHITE +pool.getHikariPoolMXBean().getThreadsAwaitingConnection()));
 			sender.sendMessage(
-					Prism.messenger.playerMsg("Pool idle count: " + ChatColor.WHITE + pool.getNumIdle()));
+					Prism.messenger.playerMsg("Total Connection count: " + ChatColor.WHITE +pool.getHikariPoolMXBean().getTotalConnections()));
 		}
 		boolean recorderActive = false;
 		if (plugin.recordingTask != null) {

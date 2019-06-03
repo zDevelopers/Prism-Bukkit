@@ -1,8 +1,12 @@
 package me.botsko.prism.database.mysql;
 
-import me.botsko.prism.database.sql.*;
+import com.zaxxer.hikari.HikariConfig;
+import com.zaxxer.hikari.HikariDataSource;
 import me.botsko.prism.database.SelectQuery;
+import me.botsko.prism.database.sql.SQLPrismDataSource;
+import me.botsko.prism.database.sql.SQLSelectQueryBuilder;
 import org.bukkit.configuration.ConfigurationSection;
+
 
 /**
  * Created for use for the Add5tar MC Minecraft server
@@ -29,26 +33,15 @@ public class MySQLPrismDataSource extends SQLPrismDataSource {
     }
     @Override
     public MySQLPrismDataSource createDataSource() {
-        org.apache.tomcat.jdbc.pool.DataSource pool = null;
+        HikariDataSource pool;
         final String dns = "jdbc:mysql://" + this.section.getString("hostname") + ":"
                 + this.section.getString("port") + "/" + this.section.getString("databaseName")
                 + "?useUnicode=true&characterEncoding=UTF-8&useSSL=false";
-        pool = new org.apache.tomcat.jdbc.pool.DataSource();
-        pool.setDriverClassName("com.mysql.jdbc.Driver");
-        pool.setUrl(dns);
-        pool.setUsername(this.section.getString("username"));
-        pool.setPassword(this.section.getString("password"));
-        pool.setInitialSize(this.section.getInt("database.pool-initial-size"));
-        pool.setMaxActive(this.section.getInt("database.max-pool-connections"));
-        pool.setMaxIdle(this.section.getInt("database.max-idle-connections"));
-        pool.setMaxWait(this.section.getInt("database.max-wait"));
-        pool.setRemoveAbandoned(true);
-        pool.setRemoveAbandonedTimeout(60);
-        pool.setTestOnBorrow(true);
-        pool.setValidationQuery("/* ping */SELECT 1");
-        pool.setValidationInterval(30000);
+        HikariConfig hConfig = loadHikariConfig("com.mysql.jdbc.Driver",dns);
+        pool = new HikariDataSource(hConfig);
         database = pool;
         createSettingsQuery();
+        saveHikariConfig(hConfig);
         return this;
     }
 

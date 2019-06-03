@@ -1,5 +1,6 @@
 package me.botsko.prism;
 
+import au.com.addstar.dripreporter.DripReporterApi;
 import com.sk89q.worldedit.WorldEdit;
 import com.sk89q.worldedit.bukkit.WorldEditPlugin;
 
@@ -102,6 +103,13 @@ public class Prism extends JavaPlugin {
 	public BukkitTask recordingTask;
 	public int total_records_affected = 0;
 
+	public DripReporterApi getMonitor() {
+		return monitor;
+	}
+
+	private DripReporterApi monitor;
+	private boolean monitoring;
+
 	/**
 	 * DB Foreign key caches
 	 */
@@ -159,6 +167,13 @@ public class Prism extends JavaPlugin {
 					}
 				}
 			}
+			if(this.getServer().getPluginManager().getPlugin("DripReporter").isEnabled()){
+				monitor = (DripReporterApi) getServer().getPluginManager().getPlugin("DripReporter");
+				if(monitor != null){
+					monitoring = true;
+				}
+			}
+
 			if (prismDataSource == null || test_conn == null) {
 				final String[] dbDisabled = new String[4];
 				dbDisabled[0] = "Prism will disable itself because it couldn't connect to a database.";

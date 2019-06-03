@@ -1,12 +1,26 @@
 package me.botsko.prism.database.sql;
 
+import au.com.addstar.dripreporter.DripReporterApi;
+import com.zaxxer.hikari.HikariConfig;
+import com.zaxxer.hikari.HikariDataSource;
 import me.botsko.prism.Prism;
 import me.botsko.prism.actionlibs.ActionRegistry;
-import me.botsko.prism.database.*;
-import org.apache.juli.logging.Log;
-import org.apache.juli.logging.LogFactory;
+import me.botsko.prism.database.ActionReportQuery;
+import me.botsko.prism.database.BlockReportQuery;
+import me.botsko.prism.database.DeleteQuery;
+import me.botsko.prism.database.InsertQuery;
+import me.botsko.prism.database.PrismDataSource;
+import me.botsko.prism.database.SelectIDQuery;
+import me.botsko.prism.database.SelectProcessActionQuery;
+import me.botsko.prism.database.SelectQuery;
+import me.botsko.prism.database.SettingsQuery;
 import org.bukkit.configuration.ConfigurationSection;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
 import java.util.HashMap;
 
 
@@ -20,6 +34,27 @@ import java.sql.*;
  */
 public abstract class SQLPrismDataSource implements PrismDataSource {
 
+    protected String name = "unconfigured";
+    protected HikariDataSource database;
+    protected ConfigurationSection section;
+    private boolean paused; //when set the datasource will not allow insertions;
+    private Logger log;
+    private SettingsQuery settingsQuery = null;
+    private String prefix;
+
+    public SQLPrismDataSource(ConfigurationSection section) {
+        log = LoggerFactory.getLogger("Prism");
+        this.section = section;
+        setPrefix(section.getString("prefix"));
+        setFile();
+        createDataSource();
+        if (Prism.getInstance().getMonitor() != null) {
+            DripReporterApi dripApi = Prism.getInstance().getMonitor();
+            database.setHealthCheckRegistry(dripApi.getHealthRegistry());
+        }
+        database.validate();
+    }
+
     @Override
     public boolean isPaused() {
         return paused;
@@ -29,40 +64,23 @@ public abstract class SQLPrismDataSource implements PrismDataSource {
         this.paused = paused;
     }
 
-    private boolean paused; //when set the datasource will not allow insertions;
-
-    protected String name = "unconfigured";
-    private Log log;
-    protected static org.apache.tomcat.jdbc.pool.DataSource database = null;
-    private SettingsQuery settingsQuery = null;
-    protected ConfigurationSection section;
-
-    public SQLPrismDataSource(ConfigurationSection section) {
-        log = LogFactory.getLog("Prism");
-        this.section = section;
-        setPrefix(section.getString("prefix"));
-        setFile();
-        createDataSource();
-    }
     @Nonnull
-    public String getName(){
+    public String getName() {
         return name;
     }
+
     @Override
-    public Log getLog() {
+    public Logger getLog() {
         return log;
     }
-
-    public void setPrefix(String prefix) {
-        this.prefix = prefix;
-    }
-
-    private String prefix;
-
 
     @Override
     public String getPrefix() {
         return prefix;
+    }
+
+    public void setPrefix(String prefix) {
+        this.prefix = prefix;
     }
 
     @Override
@@ -127,10 +145,10 @@ public abstract class SQLPrismDataSource implements PrismDataSource {
     }
 
     public void setupDatabase(ActionRegistry actionRegistry) {
-        Connection conn = null;
         Statement st = null;
-        try {
-            conn = getConnection();
+        try (
+                Connection conn = getConnection();
+                ){
             if (conn == null)
                 return;
 
@@ -220,11 +238,6 @@ public abstract class SQLPrismDataSource implements PrismDataSource {
                     st.close();
                 } catch (final SQLException ignored) {
                 }
-            if (conn != null)
-                try {
-                    conn.close();
-                } catch (final SQLException ignored) {
-                }
         }
     }
 
@@ -232,21 +245,17 @@ public abstract class SQLPrismDataSource implements PrismDataSource {
 
         if (Prism.prismActions.containsKey(actionName))
             return;
-
-        Connection conn = null;
-        PreparedStatement s = null;
         ResultSet rs = null;
-        try {
-
-            conn = database.getConnection();
-            s = conn.prepareStatement("INSERT INTO " + getPrefix() + "actions (action) VALUES (?)",
-                    Statement.RETURN_GENERATED_KEYS);
+        try (
+                Connection conn = database.getConnection();
+                PreparedStatement s = conn.prepareStatement("INSERT INTO " + getPrefix() + "actions (action) VALUES (?)",
+                Statement.RETURN_GENERATED_KEYS);
+        ){
             s.setString(1, actionName);
             s.executeUpdate();
-
             rs = s.getGeneratedKeys();
             if (rs.next()) {
-                log.info("Registering new action type to the database/cache: " + actionName + " " + rs.getInt(1));
+                log.debug("Registering new action type to the database/cache: " + actionName + " " + rs.getInt(1));
                 Prism.prismActions.put(actionName, rs.getInt(1));
             } else {
                 throw new SQLException("Insert statement failed - no generated key obtained.");
@@ -259,89 +268,38 @@ public abstract class SQLPrismDataSource implements PrismDataSource {
                     rs.close();
                 } catch (final SQLException ignored) {
                 }
-            if (s != null)
-                try {
-                    s.close();
-                } catch (final SQLException ignored) {
-                }
-            if (conn != null)
-                try {
-                    conn.close();
-                } catch (final SQLException ignored) {
-                }
         }
     }
 
     protected void cacheActionPrimaryKeys() {
-        Connection conn = null;
-        PreparedStatement s = null;
-        ResultSet rs = null;
-        try {
-            conn = getConnection();
-            s = conn.prepareStatement("SELECT action_id, action FROM " + getPrefix() + "actions");
-            rs = s.executeQuery();
-
+        try (
+                Connection conn = getConnection();
+                PreparedStatement s = conn.prepareStatement("SELECT action_id, action FROM " + getPrefix() + "actions");
+                ResultSet rs = s.executeQuery()
+                ){
             while (rs.next()) {
                 log.debug("Loaded " + rs.getString(2) + ", id:" + rs.getInt(1));
                 Prism.prismActions.put(rs.getString(2), rs.getInt(1));
             }
-
             Prism.debug("Loaded " + Prism.prismActions.size() + " actions into the cache.");
 
         } catch (final SQLException e) {
             handleDataSourceException(e);
-        } finally {
-            if (rs != null)
-                try {
-                    rs.close();
-                } catch (final SQLException ignored) {
-                }
-            if (s != null)
-                try {
-                    s.close();
-                } catch (final SQLException ignored) {
-                }
-            if (conn != null)
-                try {
-                    conn.close();
-                } catch (final SQLException ignored) {
-                }
         }
     }
 
     public void cacheWorldPrimaryKeys(HashMap prismWorlds) {
-
-        Connection conn = null;
-        PreparedStatement s = null;
-        ResultSet rs = null;
-        try {
-
-            conn = getConnection();
-            s = conn.prepareStatement("SELECT world_id, world FROM " + getPrefix() + "worlds");
-            rs = s.executeQuery();
-
+        try(
+                Connection conn = getConnection();
+                PreparedStatement s = conn.prepareStatement("SELECT world_id, world FROM " + getPrefix() + "worlds");
+                ResultSet rs = s.executeQuery()
+                ) {
             while (rs.next()) {
                 prismWorlds.put(rs.getString(2), rs.getInt(1));
             }
             Prism.debug("Loaded " + prismWorlds.size() + " worlds into the cache.");
         } catch (final SQLException e) {
             handleDataSourceException(e);
-        } finally {
-            if (rs != null)
-                try {
-                    rs.close();
-                } catch (final SQLException ignored) {
-                }
-            if (s != null)
-                try {
-                    s.close();
-                } catch (final SQLException ignored) {
-                }
-            if (conn != null)
-                try {
-                    conn.close();
-                } catch (final SQLException ignored) {
-                }
         }
     }
 
@@ -377,7 +335,39 @@ public abstract class SQLPrismDataSource implements PrismDataSource {
                 }
         }
     }
+    protected HikariConfig loadHikariConfig(String driverName, String dns){
+        HikariConfig hConfig = new HikariConfig();
+        String propertyFileName = section.getString("database.propertyfile","hikaricp.properties");
+        File file = new File(Prism.getInstance().getDataFolder(),propertyFileName);
+        if(file.exists()){
+            hConfig = new HikariConfig(file.getAbsolutePath());
+        }
+        hConfig.setDriverClassName(driverName);
+        hConfig.setJdbcUrl(dns);
+        hConfig.setUsername(this.section.getString("username"));
+        hConfig.setPassword(this.section.getString("password"));
+        hConfig.setMaximumPoolSize(this.section.getInt("database.max-pool-connections"));
+        hConfig.setMinimumIdle(this.section.getInt("database.min-idle-connections"));
+        hConfig.setConnectionTimeout(this.section.getInt("database.max-wait"));
+        hConfig.setPoolName("Prism");
+        hConfig.setValidationTimeout(50);
+        hConfig.setConnectionTestQuery("/* ping */SELECT 1");
+        return hConfig;
+    }
 
+    protected void saveHikariConfig(HikariConfig hConfig){
+        String propertyFileName = section.getString("database.propertyfile","hikaricp.properties");
+        File file = new File(Prism.getInstance().getDataFolder(),propertyFileName);
+        if(!file.exists()) {
+            try {
+                file.createNewFile();
+                FileOutputStream out = new FileOutputStream(file);
+                hConfig.getDataSourceProperties().store(out,"Prism Hikari CP Properties");
+            }catch (IOException e){
+                e.printStackTrace();
+            }
+        }
+    }
     @Override
     public void dispose() {
         if (database != null)

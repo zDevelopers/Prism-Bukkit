@@ -9,6 +9,7 @@ import org.bukkit.configuration.Configuration;
 import org.bukkit.configuration.ConfigurationSection;
 
 import java.sql.Connection;
+import java.util.ArrayList;
 
 /**
  * Created for use for the Add5tar MC Minecraft server
@@ -27,7 +28,7 @@ public class PrismDatabaseFactory {
             mysql = configuration.createSection("prism.mysql");
         }
         MySQLPrismDataSource.updateDefaultConfig(mysql);
-        addTomcatJDBCDefaults(mysql);
+        addHikariDefaults(mysql);
         ConfigurationSection derby;
         if(configuration.contains("prism.derby"))
         {
@@ -36,7 +37,7 @@ public class PrismDatabaseFactory {
             derby = configuration.createSection("prism.derby");
         }
         DerbyPrismDataSource.updateDefaultConfig(derby);
-        addTomcatJDBCDefaults(derby);
+        addHikariDefaults(derby);
         ConfigurationSection sqlite;
         if(configuration.contains("prism.sqlite"))
         {
@@ -45,18 +46,18 @@ public class PrismDatabaseFactory {
             sqlite = configuration.createSection("prism.sqlite");
         }
         SQLitePrismDataSource.updateDefaultConfig(sqlite);
-        addTomcatJDBCDefaults(sqlite);
+        addHikariDefaults(sqlite);
     }
 
-    private static void addTomcatJDBCDefaults(ConfigurationSection section) {
+    private static void addHikariDefaults(ConfigurationSection section) {
         section.addDefault("database.max-pool-connections", 20);
-        section.addDefault("database.pool-initial-size", 10);
-        section.addDefault("database.max-idle-connections", 10);
+        section.addDefault("database.min-idle-connections", 10);
         section.addDefault("database.max-wait", 30000);
         section.addDefault("database.max-failures-before-wait", 5);
         section.addDefault("database.actions-per-insert-batch", 300);
         // queue
         section.addDefault("database.force-write-queue-on-shutdown", true);
+        section.addDefault("database.propertyfile","hikaricp.properties");
     }
     public static PrismDataSource createDataSource(Configuration  configuration) {
         if(configuration == null) return null;

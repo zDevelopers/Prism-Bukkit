@@ -1,10 +1,15 @@
 package me.botsko.prism.database.sqlite;
 
+import com.zaxxer.hikari.HikariConfig;
+import com.zaxxer.hikari.HikariDataSource;
+import me.botsko.prism.Prism;
 import me.botsko.prism.database.sql.SQLPrismDataSource;
 import org.bukkit.Bukkit;
 import org.bukkit.configuration.ConfigurationSection;
 
 import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
 
 /**
  * Created for use for the Add5tar MC Minecraft server
@@ -33,18 +38,11 @@ public class SQLitePrismDataSource extends SQLPrismDataSource {
 
     @Override
     public SQLitePrismDataSource createDataSource() {
-        org.apache.tomcat.jdbc.pool.DataSource pool;
         final String dns = "jdbc:sqlite:" + sqLiteFile;
-        pool = new org.apache.tomcat.jdbc.pool.DataSource();
-        pool.setDriverClassName("org.sqlite.JDBC");
-        pool.setUrl(dns);
-        pool.setUsername(this.section.getString("username"));
-        pool.setPassword(this.section.getString("password"));
-        pool.setInitialSize(this.section.getInt("database.pool-initial-size"));
-        pool.setMaxActive(this.section.getInt("database.max-pool-connections"));
-        pool.setMaxIdle(this.section.getInt("database.max-idle-connections"));
-        pool.setMaxWait(this.section.getInt("database.max-wait"));
+        HikariConfig hConfig = loadHikariConfig("org.sqlist.JDBC",dns);
+        HikariDataSource pool = new HikariDataSource(hConfig);
         database = pool;
+        saveHikariConfig(hConfig);
         return this;
     }
 }

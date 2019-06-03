@@ -39,11 +39,17 @@
 			</exclusions>
 		</dependency>
 		<dependency>
-			<groupId>org.apache.tomcat</groupId>
-			<artifactId>tomcat-jdbc</artifactId>
-			<version>7.0.52</version>
-			<scope>compile</scope>
-        </dependency>
+			<groupId>au.com.addstar.dripreporter</groupId>
+			<artifactId>DripReporterAPI</artifactId>
+			<version>1.0</version>
+			<optional>true</optional>
+			<scope>provided</scope>
+		</dependency>
+		<dependency>
+			<groupId>com.zaxxer</groupId>
+			<artifactId>HikariCP</artifactId>
+			<version>3.3.1</version>
+		</dependency>
         <!-- https://mvnrepository.com/artifact/org.apache.derby/derby -->
         <dependency>
             <groupId>org.apache.derby</groupId>
@@ -86,6 +92,23 @@
             <id>CodeMC</id>
             <url>https://repo.codemc.org/repository/maven-public</url>
 		</repository>
+		<repository>
+			<id>addstar-repo</id>
+			<url>https://maven.addstar.com.au/artifactory/ext-release-local</url>
+			<snapshots>
+				<enabled>false</enabled>
+			</snapshots>
+		</repository>
+		<repository>
+			<id>addstar-snapshot-repo</id>
+			<url>https://maven.addstar.com.au/artifactory/ext-snapshot-local</url>
+			<snapshots>
+				<enabled>true</enabled>
+			</snapshots>
+			<releases>
+				<enabled>false</enabled>
+			</releases>
+		</repository>
 	</repositories>
 	<build>
 	<resources>
@@ -123,12 +146,8 @@
 			<configuration>
 				<relocations>
 					<relocation>
-						<pattern>org.apache.tomcat.jdbc</pattern>
-						<shadedPattern>com.helion3.prism.libs.org.apache.tomcat.jdbc</shadedPattern>
-					</relocation>
-					<relocation>
-						<pattern>org.apache.juli</pattern>
-						<shadedPattern>com.helion3.prism.libs.org.apache.juli</shadedPattern>
+						<pattern>com.zaxxer.hikari</pattern>
+						<shadedPattern>com.helion3.prism.libs.hikari</shadedPattern>
 					</relocation>
 					<relocation>
 						<pattern>com.google.gson</pattern>
@@ -136,7 +155,6 @@
                     </relocation>
                     <relocation>
                         <pattern>org.bstats</pattern>
-                        <!-- Replace this with your package! -->
                         <shadedPattern>com.botsko.prism.libs.bstats</shadedPattern>
                     </relocation>
 					<relocation>

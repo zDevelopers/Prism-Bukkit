@@ -1,10 +1,15 @@
 package me.botsko.prism.database.derby;
 
+import com.zaxxer.hikari.HikariConfig;
+import com.zaxxer.hikari.HikariDataSource;
+import me.botsko.prism.Prism;
 import me.botsko.prism.database.sql.SQLPrismDataSource;
 import org.bukkit.Bukkit;
 import org.bukkit.configuration.ConfigurationSection;
 
 import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
 
 /**
  * Created for use for the Add5tar MC Minecraft server
@@ -32,18 +37,11 @@ public class DerbyPrismDataSource extends SQLPrismDataSource {
 
     @Override
     public DerbyPrismDataSource createDataSource() {
-        org.apache.tomcat.jdbc.pool.DataSource pool;
+        HikariDataSource pool;
         final String dns = "jdbc:derby:" + derby;
-        pool = new org.apache.tomcat.jdbc.pool.DataSource();
-        pool.setDriverClassName("org.apache.derby.jdbc.EmbeddedDriver");
-        pool.setUrl(dns);
-        pool.setUsername(this.section.getString("username"));
-        pool.setPassword(this.section.getString("password"));
-        //JDBC
-        pool.setInitialSize(this.section.getInt("database.pool-initial-size"));
-        pool.setMaxActive(this.section.getInt("database.max-pool-connections"));
-        pool.setMaxIdle(this.section.getInt("database.max-idle-connections"));
-        pool.setMaxWait(this.section.getInt("database.max-wait"));
+        HikariConfig hikariConfig = loadHikariConfig("org.apache.derby.jdbc.EmbeddedDriver",dns);
+        pool = new HikariDataSource(hikariConfig);
+        saveHikariConfig(hikariConfig);
         database = pool;
         return this;
     }
