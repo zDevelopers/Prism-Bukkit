@@ -1,21 +1,11 @@
 package me.botsko.prism.actionlibs;
 
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.Statement;
-import java.util.ArrayList;
 
 import me.botsko.prism.database.InsertQuery;
-import org.bukkit.Location;
 
 import me.botsko.prism.Prism;
 import me.botsko.prism.actions.Handler;
-import me.botsko.prism.players.PlayerIdentification;
-import me.botsko.prism.players.PrismPlayer;
-import me.botsko.prism.utils.BlockUtils;
-import me.botsko.prism.utils.IntPair;
 
 public class RecordingTask implements Runnable {
 

@@ -7,6 +7,7 @@ import com.sk89q.worldedit.bukkit.WorldEditPlugin;
 import io.papermc.lib.PaperLib;
 import me.botsko.prism.database.PrismDataSource;
 import me.botsko.prism.database.PrismDatabaseFactory;
+import me.botsko.prism.managers.PlayerManager;
 import me.botsko.prism.utils.MaterialAliases;
 import me.botsko.prism.actionlibs.*;
 import me.botsko.prism.appliers.PreviewSession;
@@ -20,7 +21,6 @@ import me.botsko.prism.measurement.TimeTaken;
 import me.botsko.prism.monitors.OreMonitor;
 import me.botsko.prism.monitors.UseMonitor;
 import me.botsko.prism.parameters.*;
-import me.botsko.prism.players.PlayerIdentification;
 import me.botsko.prism.players.PrismPlayer;
 import me.botsko.prism.purge.PurgeManager;
 import me.botsko.prism.wands.Wand;
@@ -117,6 +117,11 @@ public class Prism extends JavaPlugin {
 	public static HashMap<UUID, PrismPlayer> prismPlayers = new HashMap<>();
 	public static HashMap<String, Integer> prismActions = new HashMap<>();
 
+	public PlayerManager getpManager() {
+		return pManager;
+	}
+
+	private PlayerManager pManager;
 	/**
 	 * We store a basic index of hanging entities we anticipate will fall, so that
 	 * when they do fall we can attribute them to the player who broke the original
@@ -158,22 +163,21 @@ public class Prism extends JavaPlugin {
 			prismDataSource = PrismDatabaseFactory.createDataSource(config);
 			Connection test_conn = null;
 			if (prismDataSource != null) {
-				test_conn = prismDataSource.getConnection();
-				if (test_conn != null) {
-					try {
+				try {
+					test_conn = prismDataSource.getConnection();
+					if (test_conn != null) {
 						test_conn.close();
-					} catch (final SQLException e) {
-						prismDataSource.handleDataSourceException(e);
 					}
+				} catch (final SQLException e) {
+					prismDataSource.handleDataSourceException(e);
 				}
-			}
+				}
 			if(this.getServer().getPluginManager().getPlugin("DripReporter").isEnabled()){
 				monitor = (DripReporterApi) getServer().getPluginManager().getPlugin("DripReporter");
 				if(monitor != null){
 					monitoring = true;
 				}
 			}
-
 			if (prismDataSource == null || test_conn == null) {
 				final String[] dbDisabled = new String[4];
 				dbDisabled[0] = "Prism will disable itself because it couldn't connect to a database.";
@@ -199,7 +203,8 @@ public class Prism extends JavaPlugin {
 
 				// Cache world IDs
 				prismDataSource.cacheWorldPrimaryKeys(prismWorlds);
-				PlayerIdentification.cacheOnlinePlayerPrimaryKeys();
+				pManager = new PlayerManager();
+				pManager.cacheAllOnlinePlayer();
 
 				// ensure current worlds are added
 				for (final World w : getServer().getWorlds()) {

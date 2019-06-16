@@ -5,15 +5,7 @@ import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
 import me.botsko.prism.Prism;
 import me.botsko.prism.actionlibs.ActionRegistry;
-import me.botsko.prism.database.ActionReportQuery;
-import me.botsko.prism.database.BlockReportQuery;
-import me.botsko.prism.database.DeleteQuery;
-import me.botsko.prism.database.InsertQuery;
-import me.botsko.prism.database.PrismDataSource;
-import me.botsko.prism.database.SelectIDQuery;
-import me.botsko.prism.database.SelectProcessActionQuery;
-import me.botsko.prism.database.SelectQuery;
-import me.botsko.prism.database.SettingsQuery;
+import me.botsko.prism.database.*;
 import org.bukkit.configuration.ConfigurationSection;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -84,15 +76,12 @@ public abstract class SQLPrismDataSource implements PrismDataSource {
     }
 
     @Override
-    public Connection getConnection() {
-        try {
+    public Connection getConnection() throws SQLException {
             if (database != null)
                 return database.getConnection();
-        } catch (SQLException e) {
-            log.info("Could not retreive a connection");
-            return null;
-        }
-        return null;
+            else {
+                throw new SQLException("Database was null");
+            }
     }
 
     @Override
@@ -415,5 +404,9 @@ public abstract class SQLPrismDataSource implements PrismDataSource {
 
     public InsertQuery getDataInsertionQuery() {
         return new SQLInsertBuilder(this);
+    }
+
+    public PlayerQuery getPlayerQuery() {
+        return new SQLPlayerQuery(this);
     }
 }

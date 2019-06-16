@@ -30,7 +30,7 @@ public interface PrismDataSource {
 
     void setupDatabase(ActionRegistry actionRegistry);
 
-    Connection getConnection();
+    Connection getConnection() throws SQLException;
 
     void rebuildDataSource();
 
@@ -61,4 +61,6 @@ public interface PrismDataSource {
     SelectProcessActionQuery createProcessQuery();
 
     InsertQuery getDataInsertionQuery();
+
+    PlayerQuery getPlayerQuery();
 }

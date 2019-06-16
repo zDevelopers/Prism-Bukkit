@@ -9,6 +9,7 @@ import org.bukkit.configuration.Configuration;
 import org.bukkit.configuration.ConfigurationSection;
 
 import java.sql.Connection;
+import java.sql.SQLException;
 import java.util.ArrayList;
 
 /**
@@ -50,7 +51,7 @@ public class PrismDatabaseFactory {
     }
 
     private static void addHikariDefaults(ConfigurationSection section) {
-        section.addDefault("database.max-pool-connections", 20);
+        section.addDefault("database.max-pool-connections", 25);
         section.addDefault("database.min-idle-connections", 10);
         section.addDefault("database.max-wait", 30000);
         section.addDefault("database.max-failures-before-wait", 5);
@@ -96,7 +97,7 @@ public class PrismDatabaseFactory {
         }
     }
 
-    public static Connection getConnection() {
+    public static Connection getConnection() throws SQLException {
         return database.getConnection();
     }
 

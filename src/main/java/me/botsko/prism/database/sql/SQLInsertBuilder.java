@@ -5,7 +5,6 @@ import me.botsko.prism.actions.Handler;
 import me.botsko.prism.database.InsertQuery;
 import me.botsko.prism.database.PrismDataSource;
 import me.botsko.prism.database.QueryBuilder;
-import me.botsko.prism.players.PlayerIdentification;
 import me.botsko.prism.players.PrismPlayer;
 import me.botsko.prism.utils.BlockUtils;
 import me.botsko.prism.utils.IntPair;
@@ -13,6 +12,7 @@ import org.bukkit.Location;
 
 import java.sql.*;
 import java.util.ArrayList;
+import java.util.concurrent.ExecutionException;
 
 /**
  * Created for use for the Add5tar MC Minecraft server
@@ -44,9 +44,14 @@ public class SQLInsertBuilder extends QueryBuilder implements InsertQuery {
             action_id = Prism.prismActions.get(a.getActionType().getName());
         }
 
-        PrismPlayer prismPlayer = PlayerIdentification.cachePrismPlayer(a.getSourceName());
+        PrismPlayer prismPlayer = null;
+        try {
+            prismPlayer = Prism.getInstance().getpManager().cachePrismPlayer(a.getSourceName()).get(); //this can block but its run async
+        } catch (InterruptedException | ExecutionException e) {
+            e.printStackTrace();
+            return 0; //todo error here this shouldnt happen.
+        }
         int player_id = prismPlayer.getId();
-
         if (world_id == 0 || action_id == 0 || player_id == 0) {
             // @todo do something, error here
         }
@@ -78,7 +83,7 @@ public class SQLInsertBuilder extends QueryBuilder implements InsertQuery {
                 }
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            Prism.getPrismDataSource().handleDataSourceException(e);
         }
         return id;
     }
@@ -106,7 +111,13 @@ public class SQLInsertBuilder extends QueryBuilder implements InsertQuery {
             action_id = Prism.prismActions.get(a.getActionType().getName());
         }
 
-        PrismPlayer prismPlayer = PlayerIdentification.cachePrismPlayer(a.getSourceName());
+        PrismPlayer prismPlayer = null;
+        try {
+            prismPlayer = Prism.getInstance().getpManager().cachePrismPlayer(a.getSourceName()).get(); //this can block but its run async
+        } catch (InterruptedException | ExecutionException e) {
+            e.printStackTrace();
+            return false; //todo error here this shouldnt happen.
+        }
         int player_id = prismPlayer.getId();
 
         IntPair newIds = Prism.getItems().materialToIds(a.getMaterial(),

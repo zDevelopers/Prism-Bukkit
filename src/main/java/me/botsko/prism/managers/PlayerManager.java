@@ -2,40 +2,198 @@ package me.botsko.prism.managers;
 
 import me.botsko.prism.Prism;
 import me.botsko.prism.players.PrismPlayer;
+import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
+import org.bukkit.scheduler.BukkitTask;
 
 import java.sql.*;
+import java.util.Collection;
 import java.util.HashMap;
+import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.*;
+import java.util.function.Consumer;
 
 /**
  * Created for the Charlton IT Project.
  * Created by benjicharlton on 10/06/2019.
  */
 public class PlayerManager {
+    private ExecutorService executor;
+    private ExecutorCompletionService<PrismPlayer> service;
+    private HashMap<Future<PrismPlayer>, Player> futurePlayerMap;
     public static HashMap<UUID, PrismPlayer> prismPlayers = new HashMap<>();
 
-    public static PrismPlayer cachePrismPlayer(final String playerName) {
+    public PlayerManager() {
+        futurePlayerMap = new HashMap<>();
+        executor = Executors.newCachedThreadPool();
+        service = new ExecutorCompletionService<>(executor);
+        Bukkit.getScheduler().runTaskAsynchronously(Prism.getInstance(), () -> {
+            boolean running = true;
+            while (running) {
+                if (executor.isShutdown())
+                    running = false;
+                Future<PrismPlayer> f = service.poll(); // this will block until a future is ready to be processed
+                try {
+                    PrismPlayer p = f.get();
+                    handlePrismPlayer(p, futurePlayerMap.get(f));
+                } catch (InterruptedException | ExecutionException e) {
+                    e.printStackTrace();
+                }
+                futurePlayerMap.remove(f);
+            }
+        });
+    }
 
-        // Lookup the player
-        PrismPlayer prismPlayer = getPrismPlayer(playerName);
+    public void cacheAllOnlinePlayer() {
+        Collection<? extends Player> players = Bukkit.getOnlinePlayers();
+        players.forEach((Consumer<Player>) player -> {
+            Future<PrismPlayer> playerFuture = getPrismPlayer(player);
+            if (playerFuture.isDone()) {
+                try {
+                    prismPlayers.put(player.getUniqueId(), playerFuture.get());
+                } catch (InterruptedException | ExecutionException e) {
+                    e.printStackTrace();
+                }
+            }
+        });
+    }
+
+    public Future<PrismPlayer> cachePrismPlayer(final String player) {
+        List<Player> online = Bukkit.matchPlayer(player);
+        Future<PrismPlayer> pFuture;
+        Player original;
+        boolean isOnline = false;
+        if (online.size() == 1) {
+            original = online.get(0);
+            pFuture = getPrismPlayer(original);
+            isOnline = true;
+        } else if (online.isEmpty()) {
+            pFuture = getPrismPlayer(player);
+            original = null;
+        } else {
+            Prism.log("Ambigous Value for " + player + " corresponded to multiple online players!");
+            return CompletableFuture.completedFuture(null);
+        }
+        if (pFuture.isDone()) {
+            try {
+                PrismPlayer prismPlayer = pFuture.get();
+                if (isOnline) {
+                    handlePrismPlayer(prismPlayer, original);
+                }
+            } catch (InterruptedException | ExecutionException e) {
+                e.printStackTrace();
+            }
+        }
+        return pFuture;
+    }
+
+    public Future<PrismPlayer> cachePrismPlayer(final Player player) {
+        Future<PrismPlayer> pFuture = getPrismPlayer(player);
+        if (pFuture.isDone()) {
+            try {
+                PrismPlayer prismPlayer = pFuture.get();
+                handlePrismPlayer(prismPlayer, player);
+            } catch (InterruptedException | ExecutionException e) {
+                e.printStackTrace();
+            }
+        }
+        return pFuture;
+    }
+
+    private void handlePrismPlayer(PrismPlayer prismPlayer, Player original) {
         if (prismPlayer != null) {
-            // prismPlayer = comparePlayerToCache( player, prismPlayer );
-            Prism.debug("Loaded player " + prismPlayer.getName() + ", id: " + prismPlayer.getId() + " into the cache.");
-            // Prism.prismPlayers.put( player.getUniqueId(), prismPlayer );
-            return prismPlayer;
+            comparePlayerToCache(original, prismPlayer);
+            if (original != null) {
+                Prism.debug("Loaded player " + original.getName() + ", id: " + prismPlayer.getId() + " into the cache.");
+            } else {
+                Prism.debug("Loaded fakeplayer " + prismPlayer.getName() + ", id: " + prismPlayer.getId() + " into the cache.");
+
+            }
+            Prism.prismPlayers.put(prismPlayer.getUUID(), prismPlayer);
+            return;
+        }
+        // Player is new, create a record for them
+        addPlayer(original);
+    }
+
+    private void comparePlayerToCache(Player player, PrismPlayer prismPlayer) {
+        if (player == null) {
+            Prism.log("Player is null for " + prismPlayer.getName());
+            return;
+        }
+        // Compare for username differences, update database
+        if (!player.getName().equals(prismPlayer.getName())) {
+            prismPlayer.setName(player.getName());
+            updatePlayer(prismPlayer);
         }
 
-        // Player is new, create a record for them
-        prismPlayer = addPlayer(playerName);
+        // Compare UUID
+        if (!player.getUniqueId().equals(prismPlayer.getUUID())) {
+            Prism.log("Player UUID for " + player.getName() + " does not match our cache! " + player.getUniqueId()
+                    + " versus cache of " + prismPlayer.getUUID());
+            // Update anyway...
+            prismPlayer.setUUID(player.getUniqueId());
+            updatePlayer(prismPlayer);
 
-        return prismPlayer;
-
+        }
     }
+
+    private void addPlayer(Player player) {
+        Future<PrismPlayer> fut = service.submit(Prism.getPrismDataSource().getPlayerQuery().addPlayer(player));
+        futurePlayerMap.put(fut, player);
+    }
+
     /**
-     * Converts UUID to a string ready for use against database
+     * Returns a `prism_players` ID for the described player name. If one cannot be
+     * found, returns 0.
+     * <p>
+     * Used by the recorder in determining proper foreign key
      *
+     * @param
+     * @return Future<PrismPlayer>
      */
+    public Future<PrismPlayer> getPrismPlayer(String playerName) {
+
+        Player player = Bukkit.getPlayer(playerName);
+        if (player != null)
+            return getPrismPlayer(player);
+        // Player not online, we need to go to cache
+        return service.submit(Prism.getPrismDataSource().getPlayerQuery().lookupPlayerbyName(playerName));
+    }
+
+    /**
+     * Returns a `prism_players` ID for the described player object. If one cannot
+     * be found, returns 0.
+     *
+     * Used by the recorder in determining proper foreign key
+     *
+     * @return
+     */
+    public Future<PrismPlayer> getPrismPlayer(Player player) {
+        // Are they in the cache?
+        PrismPlayer prismPlayer = Prism.prismPlayers.get(player.getUniqueId());
+        if (prismPlayer != null)
+            return CompletableFuture.completedFuture(prismPlayer);
+        // Lookup by UUID
+        Future<PrismPlayer> f = service.submit(Prism.getPrismDataSource().getPlayerQuery().lookupPlayerbyUUID(player.getUniqueId()));
+        futurePlayerMap.put(f, player);
+        return f;
+    }
+
+    protected void updatePlayer(PrismPlayer prismPlayer) {
+        executor.submit(() -> Prism.getPrismDataSource().getPlayerQuery().updatePlayer(prismPlayer));
+    }
+
+    protected void addPlayer(String playerName) {
+        Future<PrismPlayer> fut = service.submit(Prism.getPrismDataSource().getPlayerQuery().addPlayer(playerName));
+        futurePlayerMap.put(fut, null);
+    }
+
+    public static String uuidToDbString(UUID id) {
+        return id.toString().replace("-", "");
+    }
+
     public static UUID uuidFromDbString(String uuid) {
         // Positions need to be -2
         String completeUuid = uuid.substring(0, 8);
@@ -47,114 +205,7 @@ public class PlayerManager {
         return UUID.fromString(completeUuid);
     }
 
-    public static String uuidToDbString(UUID id) {
-        return id.toString().replace("-", "");
-    }
-    /**
-     * Saves a real player's UUID and current Username to the `prism_players` table.
-     * At this stage, we're pretty sure the UUID and username do not already exist.
-     *
-     * @param player
-     */
-    protected static PrismPlayer addPlayer(Player player) {
-        String prefix = Prism.config.getString("prism.mysql.prefix");
-
-        PrismPlayer prismPlayer = new PrismPlayer(0, player.getUniqueId(), player.getName());
-
-        Connection conn = null;
-        PreparedStatement s = null;
-        ResultSet rs = null;
-        try {
-
-            conn = Prism.getPrismDataSource().getConnection();
-            s = conn.prepareStatement("INSERT INTO " + prefix + "players (player,player_uuid) VALUES (?,UNHEX(?))",
-                    Statement.RETURN_GENERATED_KEYS);
-            s.setString(1, player.getName());
-            s.setString(2, uuidToDbString(player.getUniqueId()));
-            s.executeUpdate();
-
-            rs = s.getGeneratedKeys();
-            if (rs.next()) {
-                prismPlayer.setId(rs.getInt(1));
-                Prism.debug("Saved and loaded player " + player.getName() + " (" + player.getUniqueId()
-                        + ") into the cache.");
-                Prism.prismPlayers.put(player.getUniqueId(),
-                        new PrismPlayer(rs.getInt(1), player.getUniqueId(), player.getName()));
-            }
-            else {
-                throw new SQLException("Insert statement failed - no generated key obtained.");
-            }
-        }
-        catch (SQLException e) {
-            e.printStackTrace();
-        }
-        finally {
-            if (rs != null)
-                try {
-                    rs.close();
-                } catch (SQLException ignored) {
-                }
-            if (s != null)
-                try {
-                    s.close();
-                } catch (SQLException ignored) {
-                }
-            if (conn != null)
-                try {
-                    conn.close();
-                } catch (SQLException ignored) {
-                }
-        }
-        return prismPlayer;
-    }
-
-    protected static PrismPlayer addPlayer(String playerName) {
-        String prefix = Prism.config.getString("prism.mysql.prefix");
-
-        PrismPlayer fakePlayer = new PrismPlayer(0, UUID.randomUUID(), playerName);
-
-        Connection conn = null;
-        PreparedStatement s = null;
-        ResultSet rs = null;
-        try {
-
-            conn = Prism.getPrismDataSource().getConnection();
-            s = conn.prepareStatement("INSERT INTO " + prefix + "players (player,player_uuid) VALUES (?,UNHEX(?))",
-                    Statement.RETURN_GENERATED_KEYS);
-            s.setString(1, fakePlayer.getName());
-            s.setString(2, uuidToDbString(fakePlayer.getUUID()));
-            s.executeUpdate();
-
-            rs = s.getGeneratedKeys();
-            if (rs.next()) {
-                fakePlayer.setId(rs.getInt(1));
-                Prism.debug("Saved and loaded fake player " + fakePlayer.getName() + " into the cache.");
-                Prism.prismPlayers.put(fakePlayer.getUUID(), fakePlayer);
-            }
-            else {
-                throw new SQLException("Insert statement failed - no generated key obtained.");
-            }
-        }
-        catch (SQLException e) {
-            e.printStackTrace();
-        }
-        finally {
-            if (rs != null)
-                try {
-                    rs.close();
-                } catch (SQLException ignored) {
-                }
-            if (s != null)
-                try {
-                    s.close();
-                } catch (SQLException ignored) {
-                }
-            if (conn != null)
-                try {
-                    conn.close();
-                } catch (SQLException ignored) {
-                }
-        }
-        return fakePlayer;
+    private class ComparitivePlayer extends CompletableFuture<PrismPlayer> {
+        protected Player original;
     }
 }
