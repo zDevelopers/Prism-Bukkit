@@ -33,16 +33,21 @@ public class MySQLPrismDataSource extends SQLPrismDataSource {
     }
     @Override
     public MySQLPrismDataSource createDataSource() {
-        HikariDataSource pool;
-        final String dns = "jdbc:mysql://" + this.section.getString("hostname") + ":"
-                + this.section.getString("port") + "/" + this.section.getString("databaseName")
-                + "?useUnicode=true&characterEncoding=UTF-8&useSSL=false";
-        HikariConfig hConfig = loadHikariConfig("com.mysql.jdbc.Driver",dns);
-        pool = new HikariDataSource(hConfig);
-        database = pool;
-        createSettingsQuery();
-        saveHikariConfig(hConfig);
-        return this;
+        try {
+            HikariDataSource pool;
+            final String dns = "jdbc:mysql://" + this.section.getString("hostname") + ":"
+                    + this.section.getString("port") + "/" + this.section.getString("databaseName")
+                    + "?useUnicode=true&characterEncoding=UTF-8&useSSL=false";
+            HikariConfig hConfig = loadHikariConfig("com.mysql.jdbc.Driver", dns);
+            pool = new HikariDataSource(hConfig);
+            database = pool;
+            createSettingsQuery();
+            saveHikariConfig(hConfig);
+            return this;
+        }catch (Exception e){
+            e.printStackTrace();
+        }
+        return null;
     }
 
     @Override

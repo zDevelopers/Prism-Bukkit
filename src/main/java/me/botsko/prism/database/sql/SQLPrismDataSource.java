@@ -7,6 +7,7 @@ import me.botsko.prism.Prism;
 import me.botsko.prism.actionlibs.ActionRegistry;
 import me.botsko.prism.database.*;
 import org.bukkit.configuration.ConfigurationSection;
+import org.bukkit.configuration.InvalidConfigurationException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -39,12 +40,21 @@ public abstract class SQLPrismDataSource implements PrismDataSource {
         this.section = section;
         setPrefix(section.getString("prefix"));
         setFile();
-        createDataSource();
-        if (Prism.getInstance().getMonitor() != null) {
-            DripReporterApi dripApi = Prism.getInstance().getMonitor();
-            database.setHealthCheckRegistry(dripApi.getHealthRegistry());
+        try {
+            createDataSource();
+        }catch (Exception e){
+            Prism.warn(e.getMessage());
+            if(Prism.getInstance().isDebug()){
+                e.printStackTrace();
+            }
         }
-        database.validate();
+        if(database != null) {
+            if (Prism.getInstance().getMonitor() != null) {
+                DripReporterApi dripApi = Prism.getInstance().getMonitor();
+                database.setHealthCheckRegistry(dripApi.getHealthRegistry());
+            }
+            database.validate();
+        }
     }
 
     @Override
@@ -132,7 +142,64 @@ public abstract class SQLPrismDataSource implements PrismDataSource {
         }
         e.printStackTrace();
     }
+    protected String getActionTableCreateStatement(){
+        return "CREATE TABLE IF NOT EXISTS `" + getPrefix() + "actions` ("
+                + "`action_id` int(10) unsigned NOT NULL AUTO_INCREMENT," + "`action` varchar(25) NOT NULL,"
+                + "PRIMARY KEY (`action_id`)," + "UNIQUE KEY `action` (`action`)"
+                + ") ENGINE=InnoDB  DEFAULT CHARSET=utf8;";
+    };
+    protected String getDataTableCreateStatement(){
+        return "CREATE TABLE IF NOT EXISTS `" + getPrefix() + "data` ("
+                + "`id` bigint(20) unsigned NOT NULL AUTO_INCREMENT," + "`epoch` int(10) unsigned NOT NULL,"
+                + "`action_id` int(10) unsigned NOT NULL," + "`player_id` int(10) unsigned NOT NULL,"
+                + "`world_id` int(10) unsigned NOT NULL," + "`x` int(11) NOT NULL," + "`y` int(11) NOT NULL,"
+                + "`z` int(11) NOT NULL," + "`block_id` mediumint(5) DEFAULT NULL,"
+                + "`block_subid` mediumint(5) DEFAULT NULL," + "`old_block_id` mediumint(5) DEFAULT NULL,"
+                + "`old_block_subid` mediumint(5) DEFAULT NULL," + "PRIMARY KEY (`id`)," + "KEY `epoch` (`epoch`),"
+                + "KEY  `location` (`world_id`, `x`, `z`, `y`, `action_id`)"
+                + ") ENGINE=InnoDB  DEFAULT CHARSET=utf8;";
+    };
+    protected String getDataExtraTableCreateStatement(){
+        return "CREATE TABLE IF NOT EXISTS `" + getPrefix() + "data_extra` ("
+                + "`extra_id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,"
+                + "`data_id` bigint(20) unsigned NOT NULL," + "`data` text NULL," + "`te_data` text NULL,"
+                + "PRIMARY KEY (`extra_id`)," + "KEY `data_id` (`data_id`)"
+                + ") ENGINE=InnoDB  DEFAULT CHARSET=utf8;";
+    };
 
+    protected String getMetaTableCreateStatement(){
+        return "CREATE TABLE IF NOT EXISTS `" + getPrefix() + "meta` ("
+                + "`id` int(10) unsigned NOT NULL AUTO_INCREMENT," + "`k` varchar(25) NOT NULL,"
+                + "`v` varchar(255) NOT NULL," + "PRIMARY KEY (`id`)" + ") ENGINE=InnoDB  DEFAULT CHARSET=utf8;";
+    }
+
+    protected String getPlayerTableCreateStatement(){
+        return "CREATE TABLE IF NOT EXISTS `" + getPrefix() + "players` ("
+                + "`player_id` int(10) unsigned NOT NULL AUTO_INCREMENT," + "`player` varchar(255) NOT NULL,"
+                + "`player_uuid` binary(16) NOT NULL," + "PRIMARY KEY (`player_id`),"
+                + "UNIQUE KEY `player` (`player`)," + "UNIQUE KEY `player_uuid` (`player_uuid`)"
+                + ") ENGINE=InnoDB  DEFAULT CHARSET=utf8;";
+    }
+
+    protected String getWorldTableCreateStatement(){
+        return "CREATE TABLE IF NOT EXISTS `" + getPrefix() + "worlds` ("
+                + "`world_id` int(10) unsigned NOT NULL AUTO_INCREMENT," + "`world` varchar(255) NOT NULL,"
+                + "PRIMARY KEY (`world_id`),"  + "UNIQUE KEY `world` (`world`)"
+                + ") ENGINE=InnoDB  DEFAULT CHARSET=utf8;";
+    }
+
+    protected String getIDMAPTableCreateStatement(){
+        return "CREATE TABLE IF NOT EXISTS `" + getPrefix() + "id_map` (" + "`material` varchar(63) NOT NULL,"
+                + "`state` varchar(255) NOT NULL," + "`block_id` mediumint(5) NOT NULL AUTO_INCREMENT,"
+                + "`block_subid` mediumint(5) NOT NULL DEFAULT 0," + "PRIMARY KEY (`material`, `state`),"
+                + "UNIQUE KEY (`block_id`, `block_subid`)" + ") ENGINE=InnoDB DEFAULT CHARSET=utf8;";
+    }
+
+    protected String getExtraDataFKStatement(){
+        return "ALTER TABLE `" + getPrefix() + "data_extra` ADD CONSTRAINT `" + getPrefix()
+                + "data_extra_ibfk_1` FOREIGN KEY (`data_id`) REFERENCES `" + getPrefix()
+                + "data` (`id`) ON DELETE CASCADE ON UPDATE NO ACTION;";
+    }
     public void setupDatabase(ActionRegistry actionRegistry) {
         Statement st = null;
         try (
@@ -142,23 +209,12 @@ public abstract class SQLPrismDataSource implements PrismDataSource {
                 return;
 
             // actions
-            String query = "CREATE TABLE IF NOT EXISTS `" + getPrefix() + "actions` ("
-                    + "`action_id` int(10) unsigned NOT NULL AUTO_INCREMENT," + "`action` varchar(25) NOT NULL,"
-                    + "PRIMARY KEY (`action_id`)," + "UNIQUE KEY `action` (`action`)"
-                    + ") ENGINE=InnoDB  DEFAULT CHARSET=utf8;";
+            String query = getActionTableCreateStatement();
             st = conn.createStatement();
             st.executeUpdate(query);
 
             // data
-            query = "CREATE TABLE IF NOT EXISTS `" + getPrefix() + "data` ("
-                    + "`id` bigint(20) unsigned NOT NULL AUTO_INCREMENT," + "`epoch` int(10) unsigned NOT NULL,"
-                    + "`action_id` int(10) unsigned NOT NULL," + "`player_id` int(10) unsigned NOT NULL,"
-                    + "`world_id` int(10) unsigned NOT NULL," + "`x` int(11) NOT NULL," + "`y` int(11) NOT NULL,"
-                    + "`z` int(11) NOT NULL," + "`block_id` mediumint(5) DEFAULT NULL,"
-                    + "`block_subid` mediumint(5) DEFAULT NULL," + "`old_block_id` mediumint(5) DEFAULT NULL,"
-                    + "`old_block_subid` mediumint(5) DEFAULT NULL," + "PRIMARY KEY (`id`)," + "KEY `epoch` (`epoch`),"
-                    + "KEY  `location` (`world_id`, `x`, `z`, `y`, `action_id`)"
-                    + ") ENGINE=InnoDB  DEFAULT CHARSET=utf8;";
+            query = getDataTableCreateStatement();
             st.executeUpdate(query);
 
             // extra prism data table (check if it exists first, so we can avoid
@@ -169,39 +225,24 @@ public abstract class SQLPrismDataSource implements PrismDataSource {
             if (!resultSet.next()) {
 
                 // extra data
-                query = "CREATE TABLE IF NOT EXISTS `" + getPrefix() + "data_extra` ("
-                        + "`extra_id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,"
-                        + "`data_id` bigint(20) unsigned NOT NULL," + "`data` text NULL," + "`te_data` text NULL,"
-                        + "PRIMARY KEY (`extra_id`)," + "KEY `data_id` (`data_id`)"
-                        + ") ENGINE=InnoDB  DEFAULT CHARSET=utf8;";
+                query = getDataExtraTableCreateStatement();
                 st.executeUpdate(query);
 
                 // add extra data delete cascade
-                query = "ALTER TABLE `" + getPrefix() + "data_extra` ADD CONSTRAINT `" + getPrefix()
-                        + "data_extra_ibfk_1` FOREIGN KEY (`data_id`) REFERENCES `" + getPrefix()
-                        + "data` (`id`) ON DELETE CASCADE ON UPDATE NO ACTION;";
+                query = getExtraDataFKStatement();
                 st.executeUpdate(query);
             }
 
             // meta
-            query = "CREATE TABLE IF NOT EXISTS `" + getPrefix() + "meta` ("
-                    + "`id` int(10) unsigned NOT NULL AUTO_INCREMENT," + "`k` varchar(25) NOT NULL,"
-                    + "`v` varchar(255) NOT NULL," + "PRIMARY KEY (`id`)" + ") ENGINE=InnoDB  DEFAULT CHARSET=utf8;";
+            query = getMetaTableCreateStatement();
             st.executeUpdate(query);
 
             // players
-            query = "CREATE TABLE IF NOT EXISTS `" + getPrefix() + "players` ("
-                    + "`player_id` int(10) unsigned NOT NULL AUTO_INCREMENT," + "`player` varchar(255) NOT NULL,"
-                    + "`player_uuid` binary(16) NOT NULL," + "PRIMARY KEY (`player_id`),"
-                    + "UNIQUE KEY `player` (`player`)," + "UNIQUE KEY `player_uuid` (`player_uuid`)"
-                    + ") ENGINE=InnoDB  DEFAULT CHARSET=utf8;";
+            query = getPlayerTableCreateStatement();
             st.executeUpdate(query);
 
             // worlds
-            query = "CREATE TABLE IF NOT EXISTS `" + getPrefix() + "worlds` ("
-                    + "`world_id` int(10) unsigned NOT NULL AUTO_INCREMENT," + "`world` varchar(255) NOT NULL,"
-                    + "PRIMARY KEY (`world_id`)," + "UNIQUE KEY `world` (`world`)"
-                    + ") ENGINE=InnoDB  DEFAULT CHARSET=utf8;";
+            query = getWorldTableCreateStatement();
             st.executeUpdate(query);
 
             // actions
@@ -213,10 +254,7 @@ public abstract class SQLPrismDataSource implements PrismDataSource {
             }
 
             // id map
-            query = "CREATE TABLE IF NOT EXISTS `" + getPrefix() + "id_map` (" + "`material` varchar(63) NOT NULL,"
-                    + "`state` varchar(255) NOT NULL," + "`block_id` mediumint(5) NOT NULL AUTO_INCREMENT,"
-                    + "`block_subid` mediumint(5) NOT NULL DEFAULT 0," + "PRIMARY KEY (`material`, `state`),"
-                    + "UNIQUE KEY (`block_id`, `block_subid`)" + ") ENGINE=InnoDB DEFAULT CHARSET=utf8;";
+            query = getIDMAPTableCreateStatement();
             st.executeUpdate(query);
         } catch (final SQLException e) {
             Prism.log("Database connection error: " + e.getMessage());
@@ -326,21 +364,26 @@ public abstract class SQLPrismDataSource implements PrismDataSource {
     }
     protected HikariConfig loadHikariConfig(String driverName, String dns){
         HikariConfig hConfig = new HikariConfig();
-        String propertyFileName = section.getString("database.propertyfile","hikaricp.properties");
-        File file = new File(Prism.getInstance().getDataFolder(),propertyFileName);
-        if(file.exists()){
-            hConfig = new HikariConfig(file.getAbsolutePath());
+        try {
+            String propertyFileName = section.getString("database.propertyfile", "hikaricp.properties");
+            File file = new File(Prism.getInstance().getDataFolder(), propertyFileName);
+            if (file.exists()) {
+                hConfig = new HikariConfig(file.getAbsolutePath());
+            }
+            if(driverName != null)hConfig.setDriverClassName(driverName); // this allows Hikari to try and automatically configure it from url
+            hConfig.setJdbcUrl(dns);
+            hConfig.setUsername(this.section.getString("username"));
+            hConfig.setPassword(this.section.getString("password"));
+            hConfig.setMaximumPoolSize(this.section.getInt("database.max-pool-connections"));
+            hConfig.setMinimumIdle(this.section.getInt("database.min-idle-connections"));
+            hConfig.setConnectionTimeout(this.section.getInt("database.max-wait"));
+            hConfig.setPoolName("Prism");
+            hConfig.setValidationTimeout(500);
+            hConfig.setConnectionTestQuery("/* ping */SELECT 1");
+            return hConfig;
+        }catch (Exception e){
+            e.printStackTrace();
         }
-        hConfig.setDriverClassName(driverName);
-        hConfig.setJdbcUrl(dns);
-        hConfig.setUsername(this.section.getString("username"));
-        hConfig.setPassword(this.section.getString("password"));
-        hConfig.setMaximumPoolSize(this.section.getInt("database.max-pool-connections"));
-        hConfig.setMinimumIdle(this.section.getInt("database.min-idle-connections"));
-        hConfig.setConnectionTimeout(this.section.getInt("database.max-wait"));
-        hConfig.setPoolName("Prism");
-        hConfig.setValidationTimeout(50);
-        hConfig.setConnectionTestQuery("/* ping */SELECT 1");
         return hConfig;
     }
 

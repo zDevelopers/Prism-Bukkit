@@ -29,19 +29,23 @@ public class PlayerManager {
         executor = Executors.newCachedThreadPool();
         service = new ExecutorCompletionService<>(executor);
         Bukkit.getScheduler().runTaskAsynchronously(Prism.getInstance(), () -> {
+            Prism.debug("Launching Aysnc Player Polling.");
             boolean running = true;
             while (running) {
                 if (executor.isShutdown())
                     running = false;
-                Future<PrismPlayer> f = service.poll(); // this will block until a future is ready to be processed
-                try {
-                    PrismPlayer p = f.get();
-                    handlePrismPlayer(p, futurePlayerMap.get(f));
-                } catch (InterruptedException | ExecutionException e) {
-                    e.printStackTrace();
-                }
-                futurePlayerMap.remove(f);
+                    try {
+                        Future<PrismPlayer> f = service.take(); // this will block until a future is ready to be processed
+                        PrismPlayer p = f.get();
+                        handlePrismPlayer(p, futurePlayerMap.get(f));
+                        futurePlayerMap.remove(f);
+                    } catch (InterruptedException | ExecutionException e) {
+                        Prism.log(e.getMessage());
+                        if(Prism.getInstance().isDebug())
+                            e.printStackTrace();
+                    }
             }
+            Prism.debug("Terminated Aysnc Player Polling.");
         });
     }
 

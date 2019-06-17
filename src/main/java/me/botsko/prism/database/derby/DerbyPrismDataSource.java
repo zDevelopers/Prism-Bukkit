@@ -39,7 +39,7 @@ public class DerbyPrismDataSource extends SQLPrismDataSource {
     public DerbyPrismDataSource createDataSource() {
         HikariDataSource pool;
         final String dns = "jdbc:derby:" + derby;
-        HikariConfig hikariConfig = loadHikariConfig("org.apache.derby.jdbc.EmbeddedDriver",dns);
+        HikariConfig hikariConfig = loadHikariConfig(null,dns);
         pool = new HikariDataSource(hikariConfig);
         saveHikariConfig(hikariConfig);
         database = pool;

@@ -25,6 +25,7 @@ import me.botsko.prism.players.PrismPlayer;
 import me.botsko.prism.purge.PurgeManager;
 import me.botsko.prism.wands.Wand;
 
+import org.apache.commons.lang.StringUtils;
 import org.bstats.bukkit.Metrics;
 import org.bukkit.*;
 import org.bukkit.block.Block;
@@ -61,6 +62,7 @@ public class Prism extends JavaPlugin {
 	 */
 	private static String plugin_name;
 	private String plugin_version;
+	private boolean debug;
 	private static MaterialAliases items;
 	// private Language language = null;
 	private static Logger log = Logger.getLogger("Minecraft");
@@ -140,6 +142,9 @@ public class Prism extends JavaPlugin {
 		instance = this;
 	}
 
+	public boolean isDebug() {
+		return debug;
+	}
 	/**
 	 * Enables the plugin and activates our player listeners
 	 */
@@ -153,13 +158,15 @@ public class Prism extends JavaPlugin {
 		PaperLib.suggestPaper(this);
 		// Load configuration, or install if new
 		loadConfig();
-
+		debug = config.getBoolean("prism.debug");
 		if (getConfig().getBoolean("prism.allow-metrics")) {
+			Prism.log("Configuring Bstats to provide developer feedback");
 			Metrics metrics = new Metrics(this);
 		}
 
 		// init db async then call back to complete enable.
 		Bukkit.getScheduler().runTaskAsynchronously(instance, () -> {
+			Prism.log("Configuring DataSource" + StringUtils.defaultIfEmpty(config.getString("datasource")," !ERROR!"));
 			prismDataSource = PrismDatabaseFactory.createDataSource(config);
 			Connection test_conn = null;
 			if (prismDataSource != null) {
@@ -665,7 +672,7 @@ public class Prism extends JavaPlugin {
 	 * @param message
 	 */
 	public static void debug(String message) {
-		if (config.getBoolean("prism.debug")) {
+		if (Prism.getInstance().isDebug()) {
 			log.info("[" + plugin_name + "]: " + message);
 		}
 	}

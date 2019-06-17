@@ -62,8 +62,11 @@ public class PrismDatabaseFactory {
     }
     public static PrismDataSource createDataSource(Configuration  configuration) {
         if(configuration == null) return null;
-        String dataSource = configuration.getString("dataSource","mysql");
-        if(dataSource == null)return null;
+        String dataSource = configuration.getString("datasource");
+        if(dataSource == null) {
+            Prism.log("NO DATASOURCE COULD BE FOUND !!! please adjust config.");
+            return null;
+        }
         switch (dataSource) {
             case "mysql":
                 Prism.log("Attempting to configure datasource as " + dataSource);
@@ -78,7 +81,7 @@ public class PrismDatabaseFactory {
                 database = new SQLitePrismDataSource(configuration.getConfigurationSection("prism.sqlite"));
                 return database;
             default:
-                Prism.log("Attempting to configure datasource as " + null);
+                Prism.log("Attempting to configure datasource as " + "!ERROR!");
                 return null;
         }
 
@@ -91,7 +94,7 @@ public class PrismDatabaseFactory {
             case "mysql":
             case "derby":
             case "sqlite":
-                return new SQLPrismDataSourceUpdater((MySQLPrismDataSource) database);
+                return new SQLPrismDataSourceUpdater(database);
             default:
                 return null;
         }
