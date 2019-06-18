@@ -1,5 +1,6 @@
 package me.botsko.prism.database;
 
+import com.codahale.metrics.health.HealthCheckRegistry;
 import me.botsko.prism.actionlibs.ActionRegistry;
 import org.slf4j.Logger;
 
@@ -63,4 +64,6 @@ public interface PrismDataSource {
     InsertQuery getDataInsertionQuery();
 
     PlayerQuery getPlayerQuery();
+
+    void addMetrics(HealthCheckRegistry registry);
 }

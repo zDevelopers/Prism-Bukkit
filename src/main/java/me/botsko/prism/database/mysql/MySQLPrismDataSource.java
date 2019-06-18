@@ -1,5 +1,6 @@
 package me.botsko.prism.database.mysql;
 
+import com.codahale.metrics.health.HealthCheckRegistry;
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
 import me.botsko.prism.database.SelectQuery;
@@ -48,6 +49,10 @@ public class MySQLPrismDataSource extends SQLPrismDataSource {
             e.printStackTrace();
         }
         return null;
+    }
+
+    public void addMetrics(HealthCheckRegistry registry){
+        database.setHealthCheckRegistry(registry);
     }
 
     @Override

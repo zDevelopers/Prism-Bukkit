@@ -18,14 +18,14 @@ import org.apache.commons.lang.Validate;
 import me.botsko.prism.utils.IntPair;
 
 public class SQLIdMapQuery implements IdMapQuery {
-    private String prefix;
-    private PrismDataSource dataSource;
+    protected String prefix;
+    protected PrismDataSource dataSource;
     private static final String toIds = "SELECT block_id, block_subid FROM <prefix>id_map WHERE material=? AND state=? LIMIT 1;";
     private static final String toAllIds = "SELECT block_id, block_subid FROM <prefix>id_map WHERE material=?;";
     private static final String partialToAllIds = "SELECT block_id, block_subid FROM <prefix>id_map WHERE material=? AND state LIKE ?";
     private static final String toMat = "SELECT material, state FROM <prefix>id_map WHERE block_id=? AND block_subid=? LIMIT 1;";
     private static final String map = "INSERT INTO <prefix>id_map(material, state, block_id, block_subid) VALUES (?, ?, ?, ?);";
-    private static final String automap = "INSERT INTO <prefix>id_map(material, state) VALUES (?, ?);";
+    protected static final String automap = "INSERT INTO <prefix>id_map(material, state) VALUES (?, ?);";
     private static final String repair = "UPDATE <prefix>id_map SET block_id=?, block_subid=? WHERE block_id=?;";
     private static final String unauto = "ALTER TABLE <prefix>id_map AUTO_INCREMENT=?;";
 

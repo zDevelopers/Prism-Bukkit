@@ -101,6 +101,7 @@ public class PrismDatabaseFactory {
     }
 
     public static Connection getConnection() throws SQLException {
+        if(database == null)throw new SQLException("Database not available or still configuring");
         return database.getConnection();
     }
 

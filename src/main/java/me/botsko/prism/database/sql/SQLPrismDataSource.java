@@ -25,10 +25,9 @@ import java.sql.*;
  * Created for use for the Add5tar MC Minecraft server
  * Created by benjamincharlton on 8/04/2019.
  */
-public abstract class SQLPrismDataSource implements PrismDataSource {
+public abstract class SQLPrismDataSource extends AbstractPrismDataSource {
 
     protected String name = "unconfigured";
-    protected HikariDataSource database;
     protected ConfigurationSection section;
     private boolean paused; //when set the datasource will not allow insertions;
     private Logger log;
@@ -49,10 +48,6 @@ public abstract class SQLPrismDataSource implements PrismDataSource {
             }
         }
         if(database != null) {
-            if (Prism.getInstance().getMonitor() != null) {
-                DripReporterApi dripApi = Prism.getInstance().getMonitor();
-                database.setHealthCheckRegistry(dripApi.getHealthRegistry());
-            }
             database.validate();
         }
     }

@@ -106,7 +106,7 @@ public class SQLitePrismDataSource extends SQLPrismDataSource {
         return "CREATE TABLE IF NOT EXISTS `" + getPrefix() + "id_map` (" +
                 "`material` varchar(63) NOT NULL," +
                 "`state` varchar(255) NOT NULL," +
-                "`block_id` INTEGER NOT NULL AUTOINCREMENT," +
+                "`block_id` INTEGER NOT NULL," +
                 "`block_subid` INTEGER NOT NULL DEFAULT 0," +
                 "PRIMARY KEY (`material`, `state`)," +
                 "UNIQUE (`block_id`, `block_subid`)" +
