@@ -30,8 +30,6 @@ public interface PrismDataSource {
 
     void setupDatabase(ActionRegistry actionRegistry);
 
-
-
     Connection getConnection() throws SQLException;
 
     void rebuildDataSource();

@@ -264,7 +264,7 @@ public class PrismConfig extends ConfigBase {
 		config.addDefault("prism.queue-empty-tick-delay", 3);
 
 		// Copy defaults
-		//config.options().copyDefaults(true);
+        config.options().copyDefaults(true);
 
 		// save the defaults/config
 		plugin.saveConfig();

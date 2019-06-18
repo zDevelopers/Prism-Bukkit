@@ -179,7 +179,7 @@ public class Prism extends JavaPlugin {
 					prismDataSource.handleDataSourceException(e);
 				}
 				}
-			if(this.getServer().getPluginManager().getPlugin("DripReporter").isEnabled()){
+			if (this.getServer().getPluginManager().getPlugin("DripReporter") != null && this.getServer().getPluginManager().getPlugin("DripReporter").isEnabled()) {
 				monitor = (DripReporterApi) getServer().getPluginManager().getPlugin("DripReporter");
 				if(monitor != null){
 					monitoring = true;
@@ -200,29 +200,33 @@ public class Prism extends JavaPlugin {
 	}
 	private void enabled(){
 			if (isEnabled()) {
+				Bukkit.getScheduler().runTaskAsynchronously(instance, new Runnable() {
+					@Override
+					public void run() {
+						// Info needed for setup, init these here
+						handlerRegistry = new HandlerRegistry();
+						actionRegistry = new ActionRegistry();
 
-				// Info needed for setup, init these here
-				handlerRegistry = new HandlerRegistry();
-				actionRegistry = new ActionRegistry();
+						// Setup databases
+						prismDataSource.setupDatabase(actionRegistry);
 
-				// Setup databases
-				prismDataSource.setupDatabase(actionRegistry);
+						// Cache world IDs
+						prismDataSource.cacheWorldPrimaryKeys(prismWorlds);
+						pManager = new PlayerManager();
+						pManager.cacheAllOnlinePlayer();
 
-				// Cache world IDs
-				prismDataSource.cacheWorldPrimaryKeys(prismWorlds);
-				pManager = new PlayerManager();
-				pManager.cacheAllOnlinePlayer();
+						// ensure current worlds are added
+						for (final World w : getServer().getWorlds()) {
+							if (!Prism.prismWorlds.containsKey(w.getName())) {
+								prismDataSource.addWorldName(w.getName());
+							}
+						}
 
-				// ensure current worlds are added
-				for (final World w : getServer().getWorlds()) {
-					if (!Prism.prismWorlds.containsKey(w.getName())) {
-						prismDataSource.addWorldName(w.getName());
+						// Apply any updates
+						final Updater up = new Updater(Prism.getInstance());
+						up.apply_updates();
 					}
-				}
-
-				// Apply any updates
-				final Updater up = new Updater(this);
-				up.apply_updates();
+				});
 
 				eventTimer = new TimeTaken(this);
 				queueStats = new QueueStats();

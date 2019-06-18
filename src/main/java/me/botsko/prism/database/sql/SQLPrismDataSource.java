@@ -211,11 +211,11 @@ public abstract class SQLPrismDataSource implements PrismDataSource {
             // actions
             String query = getActionTableCreateStatement();
             st = conn.createStatement();
-            st.executeUpdate(query);
+            if (query != null) st.executeUpdate(query);
 
             // data
             query = getDataTableCreateStatement();
-            st.executeUpdate(query);
+            if (query != null) st.executeUpdate(query);
 
             // extra prism data table (check if it exists first, so we can avoid
             // re-adding foreign key stuff)
@@ -226,24 +226,24 @@ public abstract class SQLPrismDataSource implements PrismDataSource {
 
                 // extra data
                 query = getDataExtraTableCreateStatement();
-                st.executeUpdate(query);
+                if (query != null) st.executeUpdate(query);
 
                 // add extra data delete cascade
                 query = getExtraDataFKStatement();
-                st.executeUpdate(query);
+                if (query != null) st.executeUpdate(query);
             }
 
             // meta
             query = getMetaTableCreateStatement();
-            st.executeUpdate(query);
+            if (query != null) st.executeUpdate(query);
 
             // players
             query = getPlayerTableCreateStatement();
-            st.executeUpdate(query);
+            if (query != null) st.executeUpdate(query);
 
             // worlds
             query = getWorldTableCreateStatement();
-            st.executeUpdate(query);
+            if (query != null) st.executeUpdate(query);
 
             // actions
             cacheActionPrimaryKeys(); // Pre-cache, so we know if we need to
@@ -255,7 +255,7 @@ public abstract class SQLPrismDataSource implements PrismDataSource {
 
             // id map
             query = getIDMAPTableCreateStatement();
-            st.executeUpdate(query);
+            if (query != null) st.executeUpdate(query);
         } catch (final SQLException e) {
             Prism.log("Database connection error: " + e.getMessage());
             e.printStackTrace();

@@ -41,8 +41,6 @@ public class SQLitePrismDataSource extends SQLPrismDataSource {
     public SQLitePrismDataSource createDataSource() {
         final String dns = "jdbc:sqlite:" + sqLiteFile;
         HikariConfig hConfig = loadHikariConfig("org.sqlite.JDBC", dns);
-        hConfig.getDataSourceProperties().setProperty("characterEncoding", "UTF-8");
-        hConfig.getDataSourceProperties().setProperty("encoding", "\"UTF-8\"");
         HikariDataSource pool = new HikariDataSource(hConfig);
         database = pool;
         saveHikariConfig(hConfig);
@@ -50,61 +48,72 @@ public class SQLitePrismDataSource extends SQLPrismDataSource {
     }
     protected String getActionTableCreateStatement(){
         return "CREATE TABLE IF NOT EXISTS `" + getPrefix() + "actions` ("
-                + "`action_id` int(10) NOT NULL AUTO_INCREMENT," + "`action` varchar(25) NOT NULL,"
-                + "PRIMARY KEY (`action_id`)," + "UNIQUE KEY `action` (`action`)"
+                + "`action_id` INTEGER PRIMARY KEY AUTOINCREMENT," + "`action` varchar(25) NOT NULL UNIQUE "
                 + ")";
     };
     protected String getDataTableCreateStatement(){
-        return "CREATE TABLE IF NOT EXISTS `" + getPrefix() + "data` ("
-                + "`id` bigint(20) NOT NULL AUTO_INCREMENT," + "`epoch` int(10) NOT NULL,"
-                + "`action_id` int(10) NOT NULL," + "`player_id` int(10) NOT NULL,"
-                + "`world_id` int(10) NOT NULL," + "`x` int(11) NOT NULL," + "`y` int(11) NOT NULL,"
-                + "`z` int(11) NOT NULL," + "`block_id` mediumint(5) DEFAULT NULL,"
-                + "`block_subid` mediumint(5) DEFAULT NULL," + "`old_block_id` mediumint(5) DEFAULT NULL,"
-                + "`old_block_subid` mediumint(5) DEFAULT NULL," + "PRIMARY KEY (`id`)," + "KEY `epoch` (`epoch`),"
-                + "KEY  `location` (`world_id`, `x`, `z`, `y`, `action_id`)"
-                + ")";
+        return "CREATE TABLE IF NOT EXISTS `" + getPrefix() + "data` (" +
+                "`id` INTEGER PRIMARY KEY AUTOINCREMENT," +
+                "`epoch` int(10) NOT NULL," +
+                "`action_id` int(10) NOT NULL," +
+                "`player_id` int(10) NOT NULL," +
+                "`world_id` int(10) NOT NULL," +
+                "`x` int(11) NOT NULL," +
+                "`y` int(11) NOT NULL," +
+                "`z` int(11) NOT NULL," +
+                "`block_id` mediumint(5) DEFAULT NULL," +
+                "`block_subid` mediumint(5) DEFAULT NULL," +
+                "`old_block_id` mediumint(5) DEFAULT NULL," +
+                "`old_block_subid` mediumint(5) DEFAULT NULL" +
+                ")";
     };
 
     protected String getDataExtraTableCreateStatement(){
-        return "CREATE TABLE IF NOT EXISTS `" + getPrefix() + "data_extra` ("
-                + "`extra_id` bigint(20) NOT NULL AUTO_INCREMENT,"
-                + "`data_id` bigint(20) NOT NULL," + "`data` text NULL," + "`te_data` text NULL,"
-                + "PRIMARY KEY (`extra_id`)," + "KEY `data_id` (`data_id`)"
-                + ")";
+        return "CREATE TABLE IF NOT EXISTS `" + getPrefix() + "data_extra` (" +
+                "`extra_id` INTEGER PRIMARY KEY AUTOINCREMENT," +
+                "`data_id` INTEGER NOT NULL UNIQUE," +
+                "`data` text NULL," +
+                "`te_data` text NULL," +
+                "FOREIGN KEY (data_id) REFERENCES " + getPrefix() + "data(id)" +
+                " ON DELETE CASCADE " +
+                " ON UPDATE NO ACTION" +
+                ")";
     };
 
     protected String getMetaTableCreateStatement(){
-        return "CREATE TABLE IF NOT EXISTS `" + getPrefix() + "meta` ("
-                + "`id` int(10) NOT NULL AUTO_INCREMENT," + "`k` varchar(25) NOT NULL,"
-                + "`v` varchar(255) NOT NULL," + "PRIMARY KEY (`id`)" + ") ENGINE=InnoDB  DEFAULT CHARSET=utf8;";
+        return "CREATE TABLE IF NOT EXISTS `" + getPrefix() + "meta` (" +
+                "`id`INTEGER PRIMARY KEY AUTOINCREMENT," +
+                "`k` varchar(25) NOT NULL," +
+                "`v` varchar(255) NOT NULL" +
+                ")";
     }
 
     protected String getPlayerTableCreateStatement(){
-        return "CREATE TABLE IF NOT EXISTS `" + getPrefix() + "players` ("
-                + "`player_id` int(10) NOT NULL AUTO_INCREMENT," + "`player` varchar(255) NOT NULL,"
-                + "`player_uuid` binary(16) NOT NULL," + "PRIMARY KEY (`player_id`),"
-                + "UNIQUE KEY `player` (`player`)," + "UNIQUE KEY `player_uuid` (`player_uuid`)"
-                + ")";
+        return "CREATE TABLE IF NOT EXISTS `" + getPrefix() + "players` (" +
+                "`player_id` INTEGER PRIMARY KEY AUTOINCREMENT," +
+                "`player` varchar(255) NOT NULL," +
+                "`player_uuid` binary(16) NOT NULL UNIQUE)";
     }
 
     protected String getWorldTableCreateStatement(){
-        return "CREATE TABLE IF NOT EXISTS `" + getPrefix() + "worlds` ("
-                + "`world_id` int(10) NOT NULL AUTO_INCREMENT," + "`world` varchar(255) NOT NULL,"
-                + "PRIMARY KEY (`world_id`),"  + "UNIQUE KEY `world` (`world`)"
-                + ")";
+        return "CREATE TABLE IF NOT EXISTS `" + getPrefix() + "worlds` (" +
+                "`world_id` INTEGER PRIMARY KEY AUTOINCREMENT," +
+                "`world` varchar(255) NOT NULL UNIQUE" +
+                ")";
     }
 
     protected String getIDMAPTableCreateStatement(){
-        return "CREATE TABLE IF NOT EXISTS `" + getPrefix() + "id_map` (" + "`material` varchar(63) NOT NULL,"
-                + "`state` varchar(255) NOT NULL," + "`block_id` mediumint(5) NOT NULL AUTO_INCREMENT,"
-                + "`block_subid` mediumint(5) NOT NULL DEFAULT 0," + "PRIMARY KEY (`material`, `state`),"
-                + "UNIQUE KEY (`block_id`, `block_subid`)" + ") ENGINE=InnoDB DEFAULT CHARSET=utf8;";
+        return "CREATE TABLE IF NOT EXISTS `" + getPrefix() + "id_map` (" +
+                "`material` varchar(63) NOT NULL," +
+                "`state` varchar(255) NOT NULL," +
+                "`block_id` INTEGER NOT NULL AUTOINCREMENT," +
+                "`block_subid` INTEGER NOT NULL DEFAULT 0," +
+                "PRIMARY KEY (`material`, `state`)," +
+                "UNIQUE (`block_id`, `block_subid`)" +
+                ")";
     }
 
     protected String getExtraDataFKStatement(){
-        return "ALTER TABLE `" + getPrefix() + "data_extra` ADD CONSTRAINT `" + getPrefix()
-                + "data_extra_ibfk_1` FOREIGN KEY (`data_id`) REFERENCES `" + getPrefix()
-                + "data` (`id`) ON DELETE CASCADE ON UPDATE NO ACTION;";
+        return null;
     }
 }

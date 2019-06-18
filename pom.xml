@@ -17,7 +17,7 @@
 		<dependency>
 			<groupId>com.destroystokyo.paper</groupId>
 			<artifactId>paper-api</artifactId>
-			<version>1.14-R0.1-SNAPSHOT</version>
+            <version>1.14.2-R0.1-SNAPSHOT</version>
 			<scope>provided</scope>
 		</dependency>
 		<dependency>
@@ -73,7 +73,19 @@
 			<artifactId>annotations</artifactId>
 			<version>17.0.0</version>
 			<scope>compile</scope>
-		</dependency>
+        </dependency>
+        <dependency>
+            <groupId>com.github.seeseemelk</groupId>
+            <artifactId>MockBukkit-v1.13</artifactId>
+            <version>0.2.0</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <version>5.4.2</version>
+            <scope>test</scope>
+        </dependency>
 	</dependencies>
 	<repositories>
 		<repository>
@@ -144,6 +156,10 @@
 			<artifactId>maven-shade-plugin</artifactId>
 			<version>3.2.1</version>
 			<configuration>
+                <artifactSet>
+                    <excludes>
+                    </excludes>
+                </artifactSet>
 				<relocations>
 					<relocation>
 						<pattern>com.zaxxer.hikari</pattern>
