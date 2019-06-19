@@ -12,7 +12,9 @@ import java.util.function.Consumer;
  */
 public interface IdMapQuery {
     void findMaterial(int block_id, int block_subid, BiConsumer<String, String> success);
+    void findMaterial(int block_id, int block_subid, BiConsumer<String, String> success, Runnable failure);
     void findIds(String material, String state, BiConsumer<Integer, Integer> success);
+    void findIds(String material, String state, BiConsumer<Integer, Integer> success, Runnable failure);
     void findAllIds(String material, Consumer<List<IntPair>> success);
     void findAllIds(String material, Consumer<List<IntPair>> success, Runnable failure);
     void findAllIdsPartial(String material, String stateLike, Consumer<List<IntPair>> success);

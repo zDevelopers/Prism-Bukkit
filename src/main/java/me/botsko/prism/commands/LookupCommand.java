@@ -14,12 +14,17 @@ import me.botsko.prism.commandlibs.SubHandler;
 import me.botsko.prism.utils.MiscUtils;
 import org.bukkit.ChatColor;
 import org.bukkit.command.CommandSender;
+import org.bukkit.entity.Player;
+import org.bukkit.scheduler.BukkitTask;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 
 public class LookupCommand implements SubHandler {
 
+	private static ConcurrentMap<CommandSender,BukkitTask> currentQuery = new ConcurrentHashMap<>();
 	/**
 	 * 
 	 */
@@ -39,19 +44,36 @@ public class LookupCommand implements SubHandler {
 	 */
 	@Override
 	public void handle(final CallInfo call) {
+		if(currentQuery.containsKey(call.getSender())){
+			call.getSender().sendMessage("You have a current query running ");
+			call.getSender().sendMessage("To cancel this query run this command with the 'cancel' arguement" );
+			call.getSender().sendMessage("eg /pr l cancel" );
 
+		}
 		// Process and validate all of the arguments
 		final QueryParameters parameters = PreprocessArgs.process(plugin, call.getSender(), call.getArgs(),
 				PrismProcessType.LOOKUP, 1, !plugin.getConfig().getBoolean("prism.queries.never-use-defaults"));
 		if (parameters == null) {
 			return;
 		}
-
+		if(parameters.isCancelled()){
+			if(currentQuery.containsKey(call.getSender())){
+				BukkitTask canc = currentQuery.get(call.getSender());
+				if(canc.isCancelled())
+					return;
+				else{
+					canc.cancel();
+				}
+		}}
 		/*
 		  Run the lookup itself in an async task so the lookup query isn't done on the
-		  main thread
+		  main thread however these can take a while ...we should allow players to cancel or interrupt a query
+		 todo allow task to be cancelled or interrupted and report on time
 		 */
-		plugin.getServer().getScheduler().runTaskAsynchronously(plugin, () -> {
+		if(currentQuery.containsKey(call.getSender())){
+			call.getSender().sendMessage("You have a current query running ");
+		}
+		BukkitTask task = plugin.getServer().getScheduler().runTaskAsynchronously(plugin, () -> {
 
 			// determine if defaults were used
 			final ArrayList<String> defaultsUsed = parameters.getDefaultsUsed();
@@ -64,7 +86,7 @@ public class LookupCommand implements SubHandler {
 			}
 
 			final ActionsQuery aq = new ActionsQuery(plugin);
-			final QueryResult results = aq.lookup(parameters, call.getSender());
+			final QueryResult results = aq.lookup(parameters, call.getSender());//this is the big delay/
 			StringBuilder sharingWithPlayers = new StringBuilder();
 			for (final CommandSender shareWith : parameters.getSharedPlayers()) {
 				sharingWithPlayers.append(shareWith.getName()).append(", ");
@@ -135,8 +157,9 @@ public class LookupCommand implements SubHandler {
 
 			// Flush timed data
 			plugin.eventTimer.printTimeRecord();
-
+			currentQuery.remove(call.getSender());
 		});
+		currentQuery.putIfAbsent(call.getSender(), task);
 	}
 
 	@Override

@@ -1,11 +1,9 @@
 package me.botsko.prism.actionlibs;
 
 
-import me.botsko.prism.database.DeleteQuery;
-import me.botsko.prism.database.SelectIDQuery;
-import me.botsko.prism.database.SelectProcessActionQuery;
-import me.botsko.prism.database.SelectQuery;
+import me.botsko.prism.database.*;
 
+import me.botsko.prism.database.sql.SQLSelectQueryBuilder;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 
@@ -13,6 +11,13 @@ import me.botsko.prism.Prism;
 import me.botsko.prism.actions.PrismProcessAction;
 import me.botsko.prism.appliers.PrismProcessType;
 import me.botsko.prism.commandlibs.Flag;
+import org.jetbrains.annotations.NotNull;
+
+import javax.management.Query;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 public class ActionsQuery {
 
@@ -54,13 +59,13 @@ public class ActionsQuery {
      * @return
      */
     public QueryResult lookup(QueryParameters parameters) {
-        return lookup(parameters, null);
+        return lookup(parameters, null,0);
     }
 
     /**
      * @return
      */
-    public QueryResult lookup(QueryParameters parameters, CommandSender sender) {
+    public QueryResult lookup(QueryParameters parameters, CommandSender sender, int timeOut) {
 
         Player player = null;
         if (sender instanceof Player) {
@@ -78,7 +83,7 @@ public class ActionsQuery {
         }
         qb.setParameters(parameters);
         qb.setShouldGroup(shouldGroup);
-        QueryResult res = qb.executeSelect(plugin.eventTimer);
+        QueryResult res = qb.executeSelect(plugin.eventTimer,timeOut);
         // Pull results
         res.setPerPage(parameters.getPerPage());
         // Cache it if we're doing a lookup. Otherwise we don't
@@ -101,6 +106,45 @@ public class ActionsQuery {
         // Return it
         return res;
 
+    }
+
+    public Future<QueryResult> lookupFuture(QueryParameters parameters, CommandSender sender){
+        return new Future<QueryResult>() {
+            private boolean cancelled = false;
+            private boolean done = false;
+            @Override
+            public boolean cancel(boolean mayInterruptIfRunning) {
+                if(qb instanceof SQLSelectQueryBuilder){
+                    cancelled =  ((SQLSelectQueryBuilder) qb).cancel();
+                }
+                return cancelled;
+            }
+
+            @Override
+            public boolean isCancelled() {
+                return cancelled;
+            }
+
+            @Override
+            public boolean isDone() {
+                return false;
+            }
+
+            @Override
+            public QueryResult get() throws InterruptedException, ExecutionException {
+                QueryResult result = lookup(parameters,sender,0);
+                done = true;
+                return result;
+            }
+
+            @Override
+            public QueryResult get(long timeout, @NotNull TimeUnit unit) throws InterruptedException, ExecutionException, TimeoutException {
+                int t = new Long(TimeUnit.SECONDS.convert(timeout,unit)).intValue();
+                QueryResult result = lookup(parameters,sender,t);
+                done = true;
+                return result;
+            }
+        };
     }
 
     /**

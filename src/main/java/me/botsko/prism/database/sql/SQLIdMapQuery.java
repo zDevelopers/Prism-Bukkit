@@ -66,7 +66,7 @@ public class SQLIdMapQuery implements IdMapQuery {
     }
 
     public void findIds(String material, String state, BiConsumer<Integer, Integer> success) {
-        findIds(material, state, success, SQLIdMapQuery::noop);
+        findIds(material,state, success, SQLIdMapQuery::noop);
     }
 
     public void findIds(String material, String state, BiConsumer<Integer, Integer> success, Runnable failure) {

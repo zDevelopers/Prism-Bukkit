@@ -4,6 +4,8 @@ import me.botsko.prism.actionlibs.QueryParameters;
 import me.botsko.prism.actionlibs.QueryResult;
 import me.botsko.prism.measurement.TimeTaken;
 
+import java.util.concurrent.TimeoutException;
+
 /**
  * A Select Query returns a query that selects a data set.
  * Created for use for the Add5tar MC Minecraft server
@@ -13,6 +15,7 @@ public interface SelectQuery {
     String getQuery(QueryParameters parameters, boolean shouldGroup);
     void setParameters(QueryParameters parameters);
     void setShouldGroup(boolean shouldGroup);
+    QueryResult executeSelect(TimeTaken eventTimer,int timeOut) throws TimeoutException;
     QueryResult executeSelect(TimeTaken eventTimer);
     /*    These methods should exist in a selectQuery and it should extend QueryBuilder
     String select();

@@ -12,6 +12,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 
+import me.botsko.prism.database.IdMapQuery;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.block.data.BlockData;
@@ -65,7 +66,7 @@ public class MaterialAliases {
 	}
 
 	public void initMaterials(Material... materials) {
-		SQLIdMapQuery query = new SQLIdMapQuery(Prism.getPrismDataSource());
+		IdMapQuery query = Prism.getPrismDataSource().getIDMapQery();
 
 		for (Material m : materials) {
 			String matName = m.name().toLowerCase(Locale.ENGLISH);
@@ -145,7 +146,7 @@ public class MaterialAliases {
 			return ids;
 		}
 
-		SQLIdMapQuery query = new SQLIdMapQuery(Prism.getPrismDataSource());
+		IdMapQuery query = Prism.getPrismDataSource().getIDMapQery();
 
 		query.findAllIds(material.name().toLowerCase(Locale.ENGLISH), list -> allIdsCache.put(material, new HashSet<>(list)));
 
@@ -182,7 +183,7 @@ public class MaterialAliases {
 		}
 
 		MaterialState result = new MaterialState();
-		SQLIdMapQuery query = new SQLIdMapQuery(Prism.getPrismDataSource());
+		IdMapQuery query = Prism.getPrismDataSource().getIDMapQery();
 
 		query.findMaterial(block_id, block_subid, (material, state) -> {
 			result.material = Material.matchMaterial(material.toUpperCase(Locale.ENGLISH));
@@ -236,7 +237,7 @@ public class MaterialAliases {
 		}
 
 		IntPair result = new IntPair(0, 0);
-		SQLIdMapQuery query = new SQLIdMapQuery(Prism.getPrismDataSource());
+		IdMapQuery query = Prism.getPrismDataSource().getIDMapQery();
 		String materialName = material.name().toLowerCase(Locale.ENGLISH);
 
 		synchronized (this) {
@@ -280,7 +281,7 @@ public class MaterialAliases {
 
 		String stateLike = likeString.toString();
 
-		SQLIdMapQuery query = new SQLIdMapQuery(Prism.getPrismDataSource());
+		IdMapQuery query = Prism.getPrismDataSource().getIDMapQery();
 
 		Set<IntPair> ids = new HashSet<>();
 		query.findAllIdsPartial(material.name().toLowerCase(Locale.ENGLISH), stateLike, ids::addAll);
@@ -339,6 +340,7 @@ public class MaterialAliases {
 	 * @return
 	 */
 	// TODO: Break this in 1.13. Woooo.
+	@Deprecated
 	public ArrayList<Material> getMaterialsByAlias(String alias) {
 		ArrayList<Material> itemIds = new ArrayList<>();
 		if (!itemAliases.isEmpty()) {

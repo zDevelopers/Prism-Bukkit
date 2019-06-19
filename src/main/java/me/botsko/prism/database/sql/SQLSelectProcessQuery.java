@@ -10,6 +10,7 @@ import org.bukkit.Bukkit;
 
 import java.sql.*;
 import java.util.UUID;
+import java.util.concurrent.TimeoutException;
 
 /**
  * Created for use for the Add5tar MC Minecraft server
@@ -82,10 +83,18 @@ public class SQLSelectProcessQuery extends SQLSelectQueryBuilder implements Sele
             return " LIMIT 1";
         return " ";
     }
-
+    @Override
+    public QueryResult executeSelect(TimeTaken eventTimer,int timeOut) throws TimeoutException {
+        return super.executeSelect(eventTimer,timeOut);
+    }
     @Override
     public QueryResult executeSelect(TimeTaken eventTimer) {
-        return super.executeSelect(eventTimer);
+        try {
+            return executeSelect(eventTimer, 0);
+        }catch (TimeoutException e){
+            dataSource.handleDataSourceException(e);
+        }
+        return null;
     }
 
     @Override

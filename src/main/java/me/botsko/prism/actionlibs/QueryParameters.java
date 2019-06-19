@@ -32,6 +32,15 @@ public class QueryParameters implements Cloneable {
 	protected final ArrayList<String> defaultsUsed = new ArrayList<>();
 	protected String original_command;
 
+	public boolean isCancelled() {
+		return cancelled;
+	}
+
+	public void setCancelled(boolean cancelled) {
+		this.cancelled = cancelled;
+	}
+
+	protected boolean cancelled = false;
 	/**
 	 * Single-value options
 	 */

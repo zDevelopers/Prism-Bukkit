@@ -37,7 +37,7 @@ public interface PrismDataSource {
 
     DataSource getDataSource();
 
-    void handleDataSourceException(SQLException e);
+    void handleDataSourceException(Exception e);
 
     void cacheWorldPrimaryKeys(HashMap prismWorlds);
 
@@ -64,6 +64,8 @@ public interface PrismDataSource {
     InsertQuery getDataInsertionQuery();
 
     PlayerQuery getPlayerQuery();
+
+    IdMapQuery getIDMapQery();
 
     void addMetrics(HealthCheckRegistry registry);
 }

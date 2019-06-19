@@ -3,6 +3,7 @@ package me.botsko.prism.database.sqlite;
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
 import me.botsko.prism.Prism;
+import me.botsko.prism.database.IdMapQuery;
 import me.botsko.prism.database.InsertQuery;
 import me.botsko.prism.database.sql.SQLPrismDataSource;
 import org.bukkit.Bukkit;
@@ -115,5 +116,10 @@ public class SQLitePrismDataSource extends SQLPrismDataSource {
 
     protected String getExtraDataFKStatement(){
         return null;
+    }
+
+    @Override
+    public IdMapQuery getIDMapQery() {
+        return new SqLiteIdMapQuery(this);
     }
 }

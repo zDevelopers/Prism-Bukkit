@@ -7,10 +7,12 @@ import org.apache.commons.lang.Validate;
 import java.sql.*;
 
 /**
- * Created for the Charlton IT Project.
- * Created by benjicharlton on 18/06/2019.
+ * Created for the Addstar Project.
+ * Created by Narimm on 18/06/2019.
  */
 public class SqLiteIdMapQuery extends SQLIdMapQuery {
+
+    private static final String automap = "INSERT INTO <prefix>id_map(material, state, block_id,) VALUES (?, ?, (SELECT IFNULL(MAX(id), 0) + 1 FROM <prefix>id_map));";
 
     public SqLiteIdMapQuery(PrismDataSource dataSource) {
         super(dataSource);

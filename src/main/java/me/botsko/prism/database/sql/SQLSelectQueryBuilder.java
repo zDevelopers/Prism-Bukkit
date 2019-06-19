@@ -24,15 +24,14 @@ import org.bukkit.block.data.BlockData;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.util.Vector;
 
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
+import java.sql.*;
 import java.util.*;
 import java.util.Map.Entry;
+import java.util.concurrent.TimeoutException;
 
 public class SQLSelectQueryBuilder extends QueryBuilder implements SelectQuery {
 
+    private PreparedStatement s;
     /**
      *
      */
@@ -502,20 +501,39 @@ public class SQLSelectQueryBuilder extends QueryBuilder implements SelectQuery {
         }
         return where;
     }
-
+    public boolean cancel(){
+        try {
+            if(s.isClosed())
+                return true;
+            s.cancel();
+            return true;
+        }catch (SQLException e){
+            e.printStackTrace();
+            return false;
+        }
+    }
     @Override
     public QueryResult executeSelect(TimeTaken eventTimer) {
+        try {
+            return executeSelect(eventTimer, 0);
+        }catch (TimeoutException e){
+            dataSource.handleDataSourceException(e);
+        }
+        return null;
+     }
+
+    public QueryResult executeSelect(TimeTaken eventTimer,int timeout) throws TimeoutException {
 
         final List<Handler> actions = new ArrayList<>();
         // Build conditions based off final args
         final String query = getQuery(parameters, shouldGroup);
         eventTimer.recordTimedEvent("query started");
-
         try (
                 Connection conn = Prism.getPrismDataSource().getDataSource().getConnection();
-                PreparedStatement s = conn.prepareStatement(query);
-                ResultSet rs = s.executeQuery()
         ) {
+            s = conn.prepareStatement(query);
+            s.setQueryTimeout(timeout);
+            ResultSet rs = s.executeQuery();
             RecordingManager.failedDbConnectionCount = 0;
             eventTimer.recordTimedEvent("query returned, building results");
             Map<Integer, String> worldsInverse = new HashMap<>();
@@ -708,7 +726,8 @@ public class SQLSelectQueryBuilder extends QueryBuilder implements SelectQuery {
             RecordingManager.failedDbConnectionCount++;
 
             return new QueryResult(actions, parameters);
-
+        }catch (SQLTimeoutException e){
+            throw new TimeoutException(e.getMessage());
         } catch (SQLException e) {
             Prism.getPrismDataSource().handleDataSourceException(e);
         }

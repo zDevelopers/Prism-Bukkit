@@ -103,7 +103,7 @@ public abstract class SQLPrismDataSource extends AbstractPrismDataSource {
         createDataSource();
     }
 
-    protected boolean attemptToRescueConnection(SQLException e) throws SQLException {
+    protected boolean attemptToRescueConnection(Exception e) throws SQLException {
         if (e.getMessage().contains("connection closed")) {
             rebuildDataSource();
             if (database != null) {
@@ -120,7 +120,7 @@ public abstract class SQLPrismDataSource extends AbstractPrismDataSource {
     }
 
     @Override
-    public void handleDataSourceException(SQLException e) {
+    public void handleDataSourceException(Exception e) {
         Prism.debug("Database error: "+e.getMessage());
         Prism.debug("Database error: rescuing...");
         // Attempt to rescue
@@ -448,5 +448,10 @@ public abstract class SQLPrismDataSource extends AbstractPrismDataSource {
 
     public PlayerQuery getPlayerQuery() {
         return new SQLPlayerQuery(this);
+    }
+
+    public IdMapQuery getIDMapQery(){
+        return new SQLIdMapQuery(this);
+
     }
 }
