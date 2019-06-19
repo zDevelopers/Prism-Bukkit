@@ -121,6 +121,8 @@ public abstract class SQLPrismDataSource extends AbstractPrismDataSource {
 
     @Override
     public void handleDataSourceException(SQLException e) {
+        Prism.debug("Database error: "+e.getMessage());
+        Prism.debug("Database error: rescuing...");
         // Attempt to rescue
         try {
             if (attemptToRescueConnection(e)) {

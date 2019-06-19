@@ -6,7 +6,9 @@ import me.botsko.prism.database.PrismDataSource;
 import me.botsko.prism.database.AbstractFuturePlayer;
 import me.botsko.prism.players.PrismPlayer;
 import org.bukkit.entity.Player;
+import org.jetbrains.annotations.NotNull;
 
+import javax.annotation.Nonnull;
 import java.sql.*;
 import java.util.UUID;
 import java.util.concurrent.*;
@@ -17,7 +19,7 @@ import java.util.concurrent.*;
  */
 public class SQLPlayerQuery implements PlayerQuery {
     private PrismDataSource dataSource;
-
+    private String tableName = "players";
     /**
      * @param dataSource
      */
@@ -27,14 +29,14 @@ public class SQLPlayerQuery implements PlayerQuery {
 
 
     protected String select() {
-        return "SELECT player_id, player, HEX(player_uuid)";
+        return "SELECT player_id, player, HEX(player_uuid) FROM "+dataSource.getPrefix()+tableName;
     }
 
     protected String where(boolean byUUID) {
         if (byUUID)
-            return "player_uuid = UNHEX(?)";
+            return " WHERE player_uuid = UNHEX(?)";
         else {
-            return "WHERE player = ?";
+            return " WHERE player = ?";
         }
     }
 
@@ -49,6 +51,7 @@ public class SQLPlayerQuery implements PlayerQuery {
                     ResultSet rs = s.executeQuery();
                     return handleResult(rs);
                 } catch (SQLException e) {
+                    Prism.debug(" Failed Query:" +getQuery(true));
                     throw new ExecutionException(e);
                 }
             }
@@ -66,12 +69,14 @@ public class SQLPlayerQuery implements PlayerQuery {
                     ResultSet rs = s.executeQuery();
                     return handleResult(rs);
                 } catch (SQLException e) {
+                    Prism.debug(" Failed Query:" +getQuery(false));
                     throw new ExecutionException(e);
                 }
             }
         };
     }
 
+    @NotNull
     public Callable<PrismPlayer> addPlayer(Player player) {
         return new AbstractFuturePlayer() {
             @Override
@@ -98,7 +103,7 @@ public class SQLPlayerQuery implements PlayerQuery {
     private PrismPlayer insertPrismPlayer(PrismPlayer prismPlayer) {
         ResultSet rs = null;
         String prefix = Prism.config.getString("prism.mysql.prefix");
-        String updateQuery = "INSERT INTO " + prefix + "players (player,player_uuid) VALUES (?,UNHEX(?))";
+        String updateQuery = "INSERT INTO "+dataSource.getPrefix()+tableName+" (player,player_uuid) VALUES (?,UNHEX(?))";
         try (
                 Connection conn = Prism.getPrismDataSource().getConnection();
                 PreparedStatement s = conn.prepareStatement(updateQuery, Statement.RETURN_GENERATED_KEYS);
@@ -133,7 +138,7 @@ public class SQLPlayerQuery implements PlayerQuery {
     @Override
     public void updatePlayer(PrismPlayer pPlayer) {
         String prefix = Prism.config.getString("prism.mysql.prefix");
-        String query = "UPDATE " + prefix + "players SET player = ?, player_uuid = UNHEX(?) WHERE player_id = ?";
+        String query = "UPDATE "+dataSource.getPrefix()+tableName+" SET player = ?, player_uuid = UNHEX(?) WHERE player_id = ?";
         try (
                 Connection conn = Prism.getPrismDataSource().getConnection();
                 PreparedStatement s = conn.prepareStatement(query);
@@ -166,7 +171,6 @@ public class SQLPlayerQuery implements PlayerQuery {
     public String getQuery(boolean byUUID) {
 
         String query = select() + where(byUUID) + " LIMIT 1";
-
         query += ";";
         dataSource.getLog().debug(query);
         return query;

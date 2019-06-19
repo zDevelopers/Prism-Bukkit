@@ -4,9 +4,8 @@ import me.botsko.prism.Prism;
 import me.botsko.prism.players.PrismPlayer;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
-import org.bukkit.scheduler.BukkitTask;
+import org.jetbrains.annotations.NotNull;
 
-import java.sql.*;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
@@ -37,7 +36,9 @@ public class PlayerManager {
                     try {
                         Future<PrismPlayer> f = service.take(); // this will block until a future is ready to be processed
                         PrismPlayer p = f.get();
-                        handlePrismPlayer(p, futurePlayerMap.get(f));
+                        Prism.debug("Loaded player " + p.getName() + ", id: " + p.getId() + " from the database.");
+                        Player original = futurePlayerMap.get(f);
+                        handlePrismPlayer(p, original);
                         futurePlayerMap.remove(f);
                     } catch (InterruptedException | ExecutionException e) {
                         Prism.log(e.getMessage());
@@ -108,16 +109,12 @@ public class PlayerManager {
     private void handlePrismPlayer(PrismPlayer prismPlayer, Player original) {
         if (prismPlayer != null) {
             comparePlayerToCache(original, prismPlayer);
-            if (original != null) {
-                Prism.debug("Loaded player " + original.getName() + ", id: " + prismPlayer.getId() + " into the cache.");
-            } else {
-                Prism.debug("Loaded fakeplayer " + prismPlayer.getName() + ", id: " + prismPlayer.getId() + " into the cache.");
-
-            }
             Prism.prismPlayers.put(prismPlayer.getUUID(), prismPlayer);
             return;
         }
-        // Player is new, create a record for them
+        if(original == null)
+            return;
+        // Player is new and not null create a record for them
         addPlayer(original);
     }
 
@@ -142,7 +139,7 @@ public class PlayerManager {
 
         }
     }
-
+    @NotNull
     private void addPlayer(Player player) {
         Future<PrismPlayer> fut = service.submit(Prism.getPrismDataSource().getPlayerQuery().addPlayer(player));
         futurePlayerMap.put(fut, player);
@@ -177,15 +174,19 @@ public class PlayerManager {
     public Future<PrismPlayer> getPrismPlayer(Player player) {
         // Are they in the cache?
         PrismPlayer prismPlayer = Prism.prismPlayers.get(player.getUniqueId());
-        if (prismPlayer != null)
+        if (prismPlayer != null) {
+            Prism.debug("Loaded player " + player.getName() + ", id: " + prismPlayer.getId() + " from the cache.");
             return CompletableFuture.completedFuture(prismPlayer);
+        }
         // Lookup by UUID
+        Prism.debug("Loading player " + player.getName() + " into the cache.");
         Future<PrismPlayer> f = service.submit(Prism.getPrismDataSource().getPlayerQuery().lookupPlayerbyUUID(player.getUniqueId()));
         futurePlayerMap.put(f, player);
         return f;
     }
 
     protected void updatePlayer(PrismPlayer prismPlayer) {
+        Prism.debug("Updating "+prismPlayer.getName()  + " in the database");
         executor.submit(() -> Prism.getPrismDataSource().getPlayerQuery().updatePlayer(prismPlayer));
     }
 

@@ -84,7 +84,7 @@ public class Prism extends JavaPlugin {
 	private final ScheduledThreadPoolExecutor schedulePool = new ScheduledThreadPoolExecutor(1);
 	private final ScheduledThreadPoolExecutor recordingMonitorTask = new ScheduledThreadPoolExecutor(1);
 
-	private boolean debug;
+	private static boolean debug = false;
 	// private ScheduledFuture<?> scheduledPurgeExecutor;
 	private PurgeManager purgeManager;
 	private DripReporterApi monitor;
@@ -262,8 +262,8 @@ public class Prism extends JavaPlugin {
 	 * @param message
 	 */
 	public static void debug(String message) {
-		if (Prism.getInstance().isDebug()) {
-			log.info("[" + plugin_name + "]: " + message);
+		if (debug) {
+			log.info("[" + plugin_name + " DEBUG]: " + message);
 		}
 	}
 

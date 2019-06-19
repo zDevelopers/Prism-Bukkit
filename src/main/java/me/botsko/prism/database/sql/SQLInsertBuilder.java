@@ -13,6 +13,9 @@ import org.bukkit.Location;
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 /**
  * Created for use for the Add5tar MC Minecraft server
@@ -46,12 +49,21 @@ public class SQLInsertBuilder extends QueryBuilder implements InsertQuery {
 
         PrismPlayer prismPlayer = null;
         try {
-            prismPlayer = Prism.getInstance().getpManager().cachePrismPlayer(a.getSourceName()).get(); //this can block but its run async
-        } catch (InterruptedException | ExecutionException e) {
+            Future<PrismPlayer> cached = Prism.getInstance().getpManager().cachePrismPlayer(a.getSourceName());
+            prismPlayer = cached.get(500, TimeUnit.MILLISECONDS);
+            if(prismPlayer == null && cached.isDone()){
+                prismPlayer = cached.get();//this can block but its run async
+            }
+        } catch (TimeoutException | InterruptedException | ExecutionException e) {
             e.printStackTrace();
             return 0; //todo error here this shouldnt happen.
         }
-        int player_id = prismPlayer.getId();
+        int player_id = 0;
+        if(prismPlayer == null)
+            Prism.debug("Player is null for insert .......danger Will Robinson...");
+        else {
+            player_id = prismPlayer.getId();
+        }
         if (world_id == 0 || action_id == 0 || player_id == 0) {
             // @todo do something, error here
         }
